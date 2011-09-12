@@ -1,0 +1,8 @@
+This will turn into an ECMAScript back end for Functional Reactive
+Programming in Agda. Right now, it's just the ECMAScript back end.
+
+Modules are loaded using require.js (http://requirejs.org/).
+
+The top-level ECMAScript module is in js/agda-frp.js.
+
+A simple demo is in demo/clock.html.
