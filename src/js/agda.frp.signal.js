@@ -1,4 +1,4 @@
-define(["./agda-frp-taskqueue","./agda-frp-mixin"],function(taskqueue,mixin) {
+define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     // Signals are implemented as nodes in a dataflow graph.
     //
     // The lifecycle of a signal is:
@@ -536,6 +536,7 @@ define(["./agda-frp-taskqueue","./agda-frp-mixin"],function(taskqueue,mixin) {
 	one: function(when,value) { return new OneEvent(when,value); },
 	heartbeat: function(when,delay,value) { return new HeartBeatEvent(when,delay,value); },
 	constant: function(value) { return new ConstantBehaviour(value); },
-        empty: function() { return new EmptyBehaviour(); }
+        empty: function() { return new EmptyBehaviour(); },
+	reactimate: function(f) { return f(taskqueue.singleton.time); }
     };
 });
