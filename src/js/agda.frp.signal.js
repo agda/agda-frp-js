@@ -427,6 +427,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     DOMNodesBehaviour.prototype.attachTo = function(node) {
 	// We add a dummy upstream neighbour to stop us from being disposed of
 	this.addUpstream({ uid: -1, rank: this.rank, notify: function(){} });
+	while (node.firstChild) { node.removeChild(node.firstChild); }
 	this.appendChildrenOf(node);
     }
     // EmptyBehaviour <: DOMNodesBehaviour, Behaviour0<EmptyBehaviour>

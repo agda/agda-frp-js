@@ -1,21 +1,17 @@
-SRC_JS = require agda.frp agda.frp.signal agda.frp.time agda.frp.mixin agda.frp.taskqueue
+SRC_JS = require agda.frp agda.frp.main agda.frp.signal agda.frp.time agda.frp.mixin agda.frp.taskqueue
 
 DEMO_AGDA = FRP.JS.Demo.Clock
 DEMO_HTML = clock
-DEMO_JS = clock 
 
 DIST_FILES = $(addprefix dist/, \
+  $(addsuffix .js,$(SRC_JS)) \
   $(addprefix jAgda.,$(addsuffix .js,$(DEMO_AGDA))) \
-  $(addsuffix .html,$(DEMO_HTML)) \
-  $(addsuffix .js,$(SRC_JS) $(DEMO_JS)))
+  $(addsuffix .html,$(DEMO_HTML)))
 
 dist/:
 	mkdir dist
 
 dist/%.html: demo/html/%.html
-	cp $< $@
-
-dist/%.js: demo/js/%.js
 	cp $< $@
 
 dist/%.js: src/js/%.js
