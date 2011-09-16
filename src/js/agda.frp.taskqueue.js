@@ -4,6 +4,7 @@ define(function() {
     // task.rank      -- inside a time slice, tasks are executed in rank order
     // task.run(now)  -- the callback to execute the task
     function TaskQueue() {
+	var self = this;
 	this.futureTasks = {};      // Tasks to perform in the future, indexed by [time][uid]
 	this.running = false;       // Are tasks currently being executed
 	this.time = Date.now();     // The current time being executed
@@ -11,13 +12,12 @@ define(function() {
 	this.tasks = {};            // Tasks to run now, indexed by by [rank][uid]
 	this.wakeupTime = Infinity; // When to wake up next
 	this.wakeupHandle = null;   // The handle for the next wakeup call
-    }
-    function wakeup(queue) {
- 	queue.wakeupTime = Infinity;
-	queue.wakeupHandle = null;
-	queue.run(Date.now());
+	this.wakeupCallback =       // The callback for wakeups
+          function() { self.run(Date.now()); };
     }
     TaskQueue.prototype.run = function(now) {
+ 	this.wakeupTime = Infinity;
+	this.wakeupHandle = null;
 	this.running = true;
 	var taskTime = Math.min.apply(Math,Object.keys(this.futureTasks));
 	while (taskTime <= now) {
@@ -51,7 +51,7 @@ define(function() {
 		clearTimeout(this.wakeupHandle);
 	    }
 	    this.wakeupTime = when;
-	    this.wakeupHandle = setTimeout(wakeup,when-Date.now(),this);
+	    this.wakeupHandle = setTimeout(this.wakeupCallback,when-Date.now());
 	}
     };
     // A task can be scheduled if this.time <= when.

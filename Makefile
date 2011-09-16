@@ -22,6 +22,5 @@ dist/jAgda.%.js: demo/agda/$$(subst .,/,$$*).agda
 	agda -i src/agda -i demo/agda --js --compile-dir dist $<
 
 demos: dist/ $(DIST_FILES)
-	@echo $(DIST_FILES)
 
 all: demos
