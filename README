@@ -1,8 +1,48 @@
-This will turn into an ECMAScript back end for Functional Reactive
-Programming in Agda. Right now, it's just the ECMAScript back end.
+An implementation of Functional Reactive Programming for building HTML
+applications in Agda.
 
-Modules are loaded using require.js (http://requirejs.org/).
+To build and application, start with an HTML file:
 
-The top-level ECMAScript module is in js/agda-frp.js.
+  <html>
+    <head>
+      <title>Hello World</title>
+      <script data-main="agda.frp.main" src="require.js"></script>
+    </head>
+    <body> 
+      <h1>A greeting</h1>
+      <p class="agda" data-agda="Demo.Hello"></p>
+    </body>
+  </html>
 
-A simple demo is in demo/clock.html.
+This is just a regular old HTML file, which loads the agda.frp.main
+JavaScript module (using require.js, but any AMD-compliant JavaScript
+module loader should work). The important part is:
+
+  <p class="agda" data-agda="Demo.Hello"></p>
+
+The "agda" class and data-agda attribute indicates that an Agda program
+should be executed inside the annotated node.
+
+Now write an Agda program:
+
+  open import FRP.JS.Behaviour using ( Beh ; [_] )
+  open import FRP.JS.DOM using ( DOM ; text )
+  open import FRP.JS.RSet using ( ⟦_⟧ )
+
+  module Demo.Hello where
+
+  main : ⟦ Beh DOM ⟧
+  main = text ["Hello, world."]
+
+This program creates a text node whose content is always "Hello, World."
+
+Compile (using Agda 2.2.12 or later):
+
+  agda --js Demo/Hello.agda
+
+this will create a bunch of js files such as jAgda.Demo.Hello.js.
+
+Put all the .js files (including require.js and the agda.frp.*.js
+files) in the same directory as hello.html.
+
+Load hello.html in a browser, and enjoy.
