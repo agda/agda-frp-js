@@ -1,7 +1,7 @@
 SRC_JS = require agda.frp agda.frp.main agda.frp.signal agda.frp.time agda.frp.mixin agda.frp.taskqueue
 
-DEMO_AGDA = FRP.JS.Demo.Clock FRP.JS.Demo.Hello
-DEMO_HTML = clock hello
+DEMO_AGDA = FRP.JS.Demo.Hello FRP.JS.Demo.Clock FRP.JS.Demo.Geolocation
+DEMO_HTML = hello clock geolocation
 
 DIST_FILES = $(addprefix dist/, \
   $(addsuffix .js,$(SRC_JS)) \

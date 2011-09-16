@@ -531,6 +531,40 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	this.downstream.value.appendChildrenOf(result);
 	return result;
     }
+    // Geolocation, using the HTML5 geolocation API
+    function GeolocationBehaviour() {
+	var self = this;
+	this.value = null;
+	this.watcher = undefined;
+	this.success = function(position) { 
+	    self.notify(position.timestamp,position.coords);
+	}
+	this.error = function() { 
+	    self.notify(Date.now(),null);
+	}
+	Behaviour0.call(this);
+    }
+    Behaviour0.prototype.mixin(GeolocationBehaviour.prototype);
+    GeolocationBehaviour.prototype.addUpstream = function(signal) {
+	this.upstream[signal.uid] = signal;
+	signal.notify(this.taskQueue.time,this.value);
+	if (!this.watcher) {
+	    this.watcher = navigator.geolocation.watchPosition(this.success,this.error);
+	}
+    }
+    GeolocationBehaviour.prototype.dispose = function() {
+	if (this.watcher) {
+	    navigator.geolocation.clearWatch(this.watcher);
+	    this.watcher = undefined;
+	}
+    }
+    GeolocationBehaviour.prototype.notify = function(now,value) {
+	// Low-level events must have distinct timestamps
+	now = Math.max(now,this.taskQueue.time + 1);
+	this.notifyUpstream(now,value);
+	this.taskQueue.run(now);
+    }
+    var geolocation = new GeolocationBehaviour();
     // Exports
     return {
 	zero: function() { return new ZeroEvent(); },
@@ -538,6 +572,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	heartbeat: function(when,delay,value) { return new HeartBeatEvent(when,delay,value); },
 	constant: function(value) { return new ConstantBehaviour(value); },
         empty: function() { return new EmptyBehaviour(); },
+	geolocation: function() { return geolocation; },
 	reactimate: function(f) { return f(taskqueue.singleton.time); }
     };
 });
