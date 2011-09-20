@@ -3,7 +3,7 @@ define(["agda.frp.taskqueue","agda.frp.signal"],function(queue,signal) {
 	return now;
     }
     function every(delay) {
-	var start = Date.now() + delay - 1;
+	var start = queue.singleton.time + delay - 1;
 	start = start - (start % delay);
 	return signal.heartbeat(start,delay,0).map(getTime).hold(start);
     }

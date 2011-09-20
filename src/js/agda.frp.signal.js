@@ -292,7 +292,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	    // the queue right away.  This is a trade-off between
 	    // a cleaner semantics andf efficiency, caused by JS
 	    // not having a callback which is triggered after event bubbling.
-	    var now = Math.max(Date.now(),self.taskQueue.time + 1);
+	    var now = Math.max(evt.timeStamp,self.taskQueue.time + 1);
 	    currentDOMEvent = evt;
 	    self.notifyUpstream(now,evt);
 	    self.taskQueue.run(now);
@@ -540,7 +540,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	    self.notify(position.timestamp,position.coords);
 	}
 	this.error = function() { 
-	    self.notify(Date.now(),null);
+	    self.notify(self.taskQueue.now(),null);
 	}
 	Behaviour0.call(this);
     }

@@ -1,6 +1,23 @@
 require(["agda.frp"],function(frp) { require.ready(function() {
     window.scrollTo(0,1);
-    var nodes = document.getElementsByClassName("agda");
+    var nodes;
+    if (document.getElementsByClassName) {
+	nodes = document.getElementsByClassName("agda");
+    } else {
+	nodes = [];
+	function iterate(children) {
+	    if (children) {
+		for (var i = 0; i < children.length; i++) {
+		    var node = children[i];
+		    if ((node.className === "agda") || (node.getAttribute && node.getAttribute("class") === "agda")) { 
+			nodes.push(node);
+		    }
+		    iterate(node.children);
+		}
+	    }
+	}
+	iterate(document.childNodes);
+    }
     for (var i = 0; i < nodes.length; i++) {
 	var node = nodes[i];
 	var agdaName = node.getAttribute("data-agda");

@@ -5,21 +5,23 @@ define(function() {
     // task.run(now)  -- the callback to execute the task
     function TaskQueue() {
 	var self = this;
+	this.now =                  // Sigh, workaround for IE
+          Date.now || function() { return new Date().getTime(); }
 	this.futureTasks = {};      // Tasks to perform in the future, indexed by [time][uid]
 	this.running = false;       // Are tasks currently being executed
-	this.time = Date.now();     // The current time being executed
+	this.time = this.now();     // The current time being executed
 	this.rank = 0;              // The current rank being executed
 	this.tasks = {};            // Tasks to run now, indexed by by [rank][uid]
 	this.wakeupTime = Infinity; // When to wake up next
 	this.wakeupHandle = null;   // The handle for the next wakeup call
 	this.wakeupCallback =       // The callback for wakeups
-          function() { self.run(Date.now()); };
+          function() { self.run(self.now()); };
     }
     TaskQueue.prototype.run = function(now) {
  	this.wakeupTime = Infinity;
 	this.wakeupHandle = null;
 	this.running = true;
-	var taskTime = Math.min.apply(Math,Object.keys(this.futureTasks));
+	var taskTime = this.minkey(this.futureTasks);
 	while (taskTime <= now) {
 	    var unranked = this.futureTasks[taskTime]
 	    delete this.futureTasks[taskTime];
@@ -29,7 +31,7 @@ define(function() {
 		if (!this.tasks[task.rank]) { this.tasks[task.rank] = {}; }
 		this.tasks[task.rank][task.uid] = task;
 	    }
-	    var taskRank = Math.min.apply(Math,Object.keys(this.tasks));
+	    var taskRank = this.minkey(this.tasks);
 	    while (taskRank < Infinity) {
 		var running = this.tasks[taskRank];
 		delete this.tasks[taskRank];
@@ -37,21 +39,35 @@ define(function() {
 		for (var uid in running) {
 		    running[uid].run(taskTime);
 		}
-		taskRank = Math.min.apply(Math,Object.keys(this.tasks));
+		taskRank = this.minkey(this.tasks);
 	    }
-	    taskTime = Math.min.apply(Math,Object.keys(this.futureTasks));
+	    taskTime = this.minkey(this.futureTasks);
 	}
 	this.time = now;
 	this.running = false;
 	this.wakeup(taskTime);
     };
+    // A workaroun for IE
+    if (Object.keys) {
+	TaskQueue.prototype.minkey = function(obj) {
+	    return Math.min.apply(Math,Object.keys(obj));
+	};
+    } else {
+	TaskQueue.prototype.minkey = function(obj) {
+	    var result = Infinity;
+	    for (var key in obj) {
+		if (key < result) { result = Number(key); }
+	    }
+	    return result;
+	};
+    }	
     TaskQueue.prototype.wakeup = function(when) {
 	if ((!this.running) && (when < this.wakeupTime)) {
 	    if (this.wakeupHandle) {
 		clearTimeout(this.wakeupHandle);
 	    }
 	    this.wakeupTime = when;
-	    this.wakeupHandle = setTimeout(this.wakeupCallback,when-Date.now());
+	    this.wakeupHandle = setTimeout(this.wakeupCallback,when-this.now());
 	}
     };
     // A task can be scheduled if this.time <= when.
