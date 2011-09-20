@@ -2,16 +2,26 @@ SRC_JS = require agda.frp agda.frp.main agda.frp.signal agda.frp.time agda.frp.m
 
 DEMO_AGDA = FRP.JS.Demo.Hello FRP.JS.Demo.Clock FRP.JS.Demo.Geolocation
 DEMO_HTML = hello clock geolocation
+DEMO_CSS = demo
+DEMO_PNG = alu
 
 DIST_FILES = $(addprefix dist/, \
   $(addsuffix .js,$(SRC_JS)) \
   $(addprefix jAgda.,$(addsuffix .js,$(DEMO_AGDA))) \
-  $(addsuffix .html,$(DEMO_HTML)))
+  $(addsuffix .html,$(DEMO_HTML)) \
+  $(addsuffix .css,$(DEMO_CSS)) \
+  $(addsuffix .png,$(DEMO_PNG)))
 
 dist/:
 	mkdir dist
 
 dist/%.html: demo/html/%.html
+	cp $< $@
+
+dist/%.css: demo/css/%.css
+	cp $< $@
+
+dist/%.png: demo/images/%.png
 	cp $< $@
 
 dist/%.js: src/js/%.js

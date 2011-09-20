@@ -1,0 +1,31 @@
+body {
+    margin: 0px;
+    padding: 0px;
+    font-family: sans-serif;
+    /* Android (at least v2.2) needs a webapp to be larger 
+       than the screen in order to hide the address bar. */
+    min-height: 110%;
+}
+h1 {
+    color: white;
+    background: #222288;
+    text-shadow: 0px 2px 2px #111155;
+    font-size: 18pt;
+    font-weight: bold;
+    padding: 10px;
+    text-align: center;
+    /* Sigh, cross-browser gradients... */
+    background-image: -moz-linear-gradient(top, #111177, #4444AA);
+    background-image: -ie-linear-gradient(top, #111177, #4444AA);
+    background-image: -webkit-linear-gradient(top, #111177, #4444AA);
+    background-image: linear-gradient(top, #111177, #4444AA);
+    /* Sigh, cross-browser drop shadows */
+    -moz-box-shadow: 0px 3px 3px #888;
+    -webkit-box-shadow: 0px 3px 3px #888;
+    box-shadow: 0px 3px 3px #888;
+}
+.agda {
+    font-size: 14pt;
+    padding: 5px;
+    text-align: center;
+}

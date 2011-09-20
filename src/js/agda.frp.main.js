@@ -1,4 +1,5 @@
 require(["agda.frp"],function(frp) { require.ready(function() {
+    window.scrollTo(0,1);
     var nodes = document.getElementsByClassName("agda");
     for (var i = 0; i < nodes.length; i++) {
 	var node = nodes[i];
