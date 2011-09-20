@@ -1,7 +1,7 @@
 SRC_JS = require agda.frp agda.frp.main agda.frp.signal agda.frp.time agda.frp.mixin agda.frp.taskqueue
 
-DEMO_AGDA = FRP.JS.Demo.Hello FRP.JS.Demo.Clock FRP.JS.Demo.Geolocation
-DEMO_HTML = hello clock geolocation
+DEMO_AGDA = FRP.JS.Demo.Hello FRP.JS.Demo.Clock FRP.JS.Demo.Button FRP.JS.Demo.Geolocation
+DEMO_HTML = hello clock button geolocation
 DEMO_CSS = demo
 DEMO_PNG = alu
 
@@ -28,7 +28,7 @@ dist/%.js: src/js/%.js
 	cp $< $@
 
 .SECONDEXPANSION:
-dist/jAgda.%.js: demo/agda/$$(subst .,/,$$*).agda
+dist/jAgda.%.js: demo/agda/$$(subst .,/,$$*).agda src/agda/FRP/JS/*.agda src/agda/FRP/JS/*/*.agda
 	agda -i src/agda -i demo/agda --js --compile-dir dist $<
 
 demos: dist/ $(DIST_FILES)

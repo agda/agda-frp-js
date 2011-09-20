@@ -4,5 +4,5 @@ open import FRP.JS.RSet using ( ⟦_⟧ )
 
 module FRP.JS.Demo.Hello where
 
-main : ⟦ Beh DOM ⟧
+main : ∀ {w} → ⟦ Beh (DOM w) ⟧
 main = text ["Hello, world."]

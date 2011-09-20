@@ -274,42 +274,6 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	    this.notifyUpstream(now,true);
 	}
     }
-    // Convert a DOM node into an event
-    var currentDOMEvent = undefined;
-    function DOMEvent(dom,type) {
-	var self = this;
-	this.handler = function(evt) {
-	    // Low-level events must arrive at distinct times.
-	    // This means we may get clock drift if events arrive
-	    // at > 1000/s, hopefully that won't happen too often.
-	    // Note that this means that bubbling DOM events will be 
-	    // considered as distinct FRP events.
-	    // An alternative design would be to allow simultaneous
-	    // low-level events, but this would require calling
-	    // taskQueue.wakeup(now) rather than taskQueue.run(now)
-	    // below, that is we'd have to schedule a later callback
-	    // to process the task queue, rather than processing
-	    // the queue right away.  This is a trade-off between
-	    // a cleaner semantics andf efficiency, caused by JS
-	    // not having a callback which is triggered after event bubbling.
-	    var now = Math.max(evt.timeStamp,self.taskQueue.time + 1);
-	    currentDOMEvent = evt;
-	    self.notifyUpstream(now,evt);
-	    self.taskQueue.run(now);
-	    currentDOMEvent = undefined;
-	}
-	this.type = type;
-	this.dom = dom;
-	Event0.call(this);
-	this.dom.addEventListener(this.type,this.handler);
-	if (currentDOMEvent && (currentDOMEvent.currentTarget === dom) && (currentDOMEvent.type === type)) {
-	    this.notifyUpstream(now,currentDOMEvent);
-	}
-    }
-    Event0.prototype.mixin(DOMEvent.prototype);
-    DOMEvent.prototype.dispose = function() {
-	this.dom.removeEventListener(this.type,this.handler);
-    }
     // Behaviours are contiguous signals, which cache their most recent result
     function Behaviour() {}
     mixin.singleton.mixin(Behaviour.prototype);
@@ -331,9 +295,6 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     }
     Behaviour.prototype.attribute = function(key) {
 	return new AttributeBehaviour(key,this);
-    }
-    Behaviour.prototype.element = function(tag) {
-	return new ElementBehaviour(tag,this);
     }
     Behaviour.prototype.concat = function(other) {
 	return new ConcatBehaviour(this,other);
@@ -430,6 +391,8 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	while (node.firstChild) { node.removeChild(node.firstChild); }
 	this.appendChildrenOf(node);
     }
+    DOMNodesBehaviour.prototype.addEventListener = function(type,listener) {}
+    DOMNodesBehaviour.prototype.removeEventListener = function(type,listener) {}
     // EmptyBehaviour <: DOMNodesBehaviour, Behaviour0<EmptyBehaviour>
     function EmptyBehaviour() {
 	DOMNodesBehaviour.call(this);
@@ -456,6 +419,14 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     ConcatBehaviour.prototype.replaceChildrenAt = function(node,index) {
 	this.downstream1.value.replaceChildrenAt(node,index);
 	this.downstream2.value.replaceChildrenOf(node,index+this.downstream.value.length);
+    }
+    ConcatBehaviour.prototype.addEventListener = function(type,listener) {
+	this.downstream1.value.addEventListener(type,listener);
+	this.downstream2.value.addEventListener(type,listener);
+    }
+    ConcatBehaviour.prototype.removeEventListener = function(type,listener) {
+	this.downstream1.value.removeEventListener(type,listener);
+	this.downstream2.value.removeEventListener(type,listener);
     }
     // DOMNodeBehaviour <: DOMNodesBehaviour, Behaviour<DOMNodeBehaviour>
     function DOMNodeBehaviour() {
@@ -516,21 +487,129 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     AttributeBehaviour.prototype.build = function() {
 	return document.createAttributeNode(this.key,this.downstream.value);
     }
-    // ElementBehaviour <: DOMNodeBehaviour, Behaviour1<Behaviour<DOMNodesBehaviour>,ElementBehaviour>
-    function ElementBehaviour(tag,downstream) {
+    // ElementBehaviour <: DOMNodeBehaviour, Behaviour2<Behaviour<DOMNodesBehaviour>,DOW,ElementBehaviour>
+    function ElementBehaviour(tag,downstream1,downstream2) {
 	this.tag = tag;
 	DOMNodeBehaviour.call(this);
-	Behaviour1.call(this,downstream);
+	Behaviour2.call(this,downstream1,downstream2);
     }
-    DOMNodeBehaviour.prototype.mixin(Behaviour1.prototype.mixin(ElementBehaviour.prototype));
+    DOMNodeBehaviour.prototype.mixin(Behaviour2.prototype.mixin(ElementBehaviour.prototype));
     ElementBehaviour.prototype.update = function(node,value) {
 	value.setChildrenOf(node);
     }
     ElementBehaviour.prototype.build = function() {
 	var result = document.createElement(this.tag);
-	this.downstream.value.appendChildrenOf(result);
+	this.downstream1.value.appendChildrenOf(result);
+	this.downstream2.addEventListenersTo(result);
 	return result;
     }
+    ElementBehaviour.prototype.addEventListener = function(type,listener) {
+	for (var i = 0; i < this.pool.length; i++) {
+	    this.pool[i].addEventListener(type,listener);
+	}
+    }
+    ElementBehaviour.prototype.removeEventListener = function(type,listener) {
+	for (var i = 0; i < this.pool.length; i++) {
+	    this.pool[i].removeEventListener(type,listener);
+	}
+    }
+    // Document Object World, provides context (in particular event streams) for DOM behaviours
+    function DOW() {
+    }
+    DOW.prototype.child = function(tag) {
+	if (!this.children) { 
+	    this.children = {};
+	}
+	var result = this.children[tag];
+	if (!result) {
+	    result = new DOW();
+	    this.children[tag] = result;
+	}
+	return result;
+    };
+    DOW.prototype.left = function() {
+	return this.child(0);
+    };
+    DOW.prototype.right = function() {
+	return this.child(1);
+    };
+    DOW.prototype.element = function(a,b) {
+	return new ElementBehaviour(a,b,this);
+    };
+    DOW.prototype.addEventListenersTo = function(node) {
+	if (this.upstreamE) { for (uid in this.upstreamE) {
+	    node.addEventListener(this.upstreamE[uid].eventType,this.upstreamE[uid]);
+	} }
+    }	
+    DOW.prototype.addUpstream = function(upstream) {
+	// DOW nodes have two types of upstream neighbours:
+	// DOMNodeBehaviours and DOWEvents.  As a hack, we distinguish
+	// between them based on the existence of upstream.eventType
+	if (upstream.eventType) {
+	    if (!this.upstreamE) { this.upstreamE = {}; }
+	    this.upstreamE[upstream.uid] = upstream;
+	    for (uid in this.upstreamB) {
+		this.upstreamB[uid].addEventListener(upstream.eventType.upstream);
+	    }
+	} else {
+	    if (!this.upstreamB) { this.upstreamB = {}; }
+	    this.upstreamB[upstream.uid] = upstream;
+	    for (uid in this.upstreamE) {
+		upstream.addEventListener(this.upstreamE[uid].eventType,this.upstreamE[uid]);
+	    }
+	}
+    };
+    DOW.prototype.removeUpstream = function(upstream) {
+	if (upstream.eventType) {
+	    delete this.upstreamE[upstream.uid];
+	    for (uid in this.upstreamB) {
+		this.upstreamB[uid].removeEventListener(upstream.eventType.upstream);
+	    }
+	} else {
+	    delete this.upstreamB[upstream.uid];
+	    for (uid in this.upstreamE) {
+		upstream.removeEventListener(this.upstreamE[uid].eventType,this.upstreamE[uid]);
+	    }
+	}
+    }
+    DOW.prototype.check = function() {};
+    DOW.prototype.events = function(eventType) {
+	return new DOWEvent(eventType,this);
+    }; 
+    // A DOW event stream
+    var currentDOW = undefined;
+    var currentDOWEvent = undefined;
+    function DOWEvent(eventType,downstream) {
+	var self = this;
+	this.handleEvent = function(evt) {
+	    // Low-level events must arrive at distinct times.
+	    // This means we may get clock drift if events arrive
+	    // at > 1000/s, hopefully that won't happen too often.
+	    // Note that this means that bubbling DOM events will be
+	    // considered as distinct FRP events.
+	    // An alternative design would be to allow simultaneous
+	    // low-level events, but this would require calling
+	    // taskQueue.wakeup(now) rather than taskQueue.run(now)
+	    // below, that is we'd have to schedule a later callback
+	    // to process the task queue, rather than processing
+	    // the queue right away. This is a trade-off between
+	    // a cleaner semantics andf efficiency, caused by JS
+	    // not having a callback which is triggered after event bubbling.
+	    var now = Math.max(evt.timeStamp,self.taskQueue.time + 1);
+	    currentDOW = self.downstream;
+	    currentDOWEvent = evt;
+	    self.notifyUpstream(now,evt);
+	    self.taskQueue.run(now);
+	    currentDOW = undefined;
+	    currentDOWEvent = undefined;
+	}
+	this.eventType = eventType;
+	Event1.call(this,downstream);
+	if ((currentDOW === downstream) && (currentDOWEvent.type === eventType)) {
+	    this.notifyUpstream(now,currentDOWEvent);
+	}
+    }
+    Event1.prototype.mixin(DOWEvent.prototype);
     // Geolocation, using the HTML5 geolocation API
     function GeolocationBehaviour() {
 	var self = this;
@@ -573,6 +652,6 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	constant: function(value) { return new ConstantBehaviour(value); },
         empty: function() { return new EmptyBehaviour(); },
 	geolocation: function() { return geolocation; },
-	reactimate: function(f) { return f(taskqueue.singleton.time); }
+	reactimate: function(f) { return f(new DOW())(taskqueue.singleton.time); }
     };
 });

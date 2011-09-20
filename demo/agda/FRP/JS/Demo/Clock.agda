@@ -5,5 +5,5 @@ open import FRP.JS.Time using ( toUTCString ; every ; _sec )
 
 module FRP.JS.Demo.Clock where
 
-main : ⟦ Beh DOM ⟧
+main : ∀ {w} → ⟦ Beh (DOM w) ⟧
 main = text (map toUTCString (every (1 sec)))

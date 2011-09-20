@@ -12,7 +12,7 @@ show : Maybe Coords → String
 show nothing       = "unknown"
 show (just coords) = toString coords
 
-main : ⟦ Beh DOM ⟧
+main : ∀ {w} → ⟦ Beh (DOM w) ⟧
 main = 
   text ["Current location: "] ++
   text (map show geolocation) ++

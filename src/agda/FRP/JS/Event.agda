@@ -11,3 +11,6 @@ postulate
     return e.map(function (t,v) { return f(t)(v); });
   }; }; }; 
 }; } #-} 
+
+tag : ∀ {A B} → ⟦ B ⟧ → ⟦ Evt A ⇒ Evt B ⟧
+tag b = map (λ _ → b)
