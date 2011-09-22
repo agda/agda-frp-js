@@ -29,3 +29,8 @@ h1 {
     padding: 5px;
     text-align: center;
 }
+#calculator button {
+    min-height: 40px;
+    min-width: 40px;
+    margin: 2px;
+}

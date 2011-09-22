@@ -1,11 +1,12 @@
 open import FRP.JS.RSet using ( RSet ; ⟦_⟧ ; ⟨_⟩ ; _⇒_ )
 open import FRP.JS.Behaviour using ( Beh )
-open import FRP.JS.Event using ( Evt )
+open import FRP.JS.Event using ( Evt ; ∅ ; _∪_ ; map )
+open import FRP.JS.Product using ( _∧_ ; _,_ )
 open import FRP.JS.String using ( String )
 
 module FRP.JS.DOM where
 
-infixr 4 _++_
+infixr 4 _++_ _+++_
 
 postulate
   Mouse Keyboard : RSet
@@ -43,3 +44,18 @@ listen : ∀ {A w} → EventType A → ⟦ Beh (DOM w) ⇒ Evt A ⟧
 listen {A} {w} t b = events t w
 
 {-# COMPILED_JS listen function(A) { return function(w) { return function(t) { return function(s) { return function(b) { return w.events(t); }; }; }; }; } #-}
+
+[+] : ∀ {A w} → ⟦ Beh (DOM w) ∧ Evt A ⟧
+[+] = ([] , ∅)
+
+_+++_ : ∀ {A w} → ⟦ (Beh (DOM (left w)) ∧ Evt A) ⇒ (Beh (DOM (right w)) ∧ Evt A) ⇒ (Beh (DOM w) ∧ Evt A) ⟧
+(dom₁ , evt₁) +++ (dom₂ , evt₂) = ((dom₁ ++ dom₂) , (evt₁ ∪ evt₂))
+
+text+ : ∀ {A w} → ⟦ Beh ⟨ String ⟩ ⇒ (Beh (DOM w) ∧ Evt A) ⟧
+text+ msg = (text msg , ∅)
+
+element+ : ∀ a {A w} → ⟦ (Beh (DOM (child a w)) ∧ Evt A) ⇒ (Beh (DOM w) ∧ Evt A) ⟧
+element+ a (dom , evt) = (element a dom , evt)
+
+listen+ : ∀ {A B w} → EventType A → ⟦ A ⇒ B ⟧ → ⟦ (Beh (DOM w) ∧ Evt B) ⇒ (Beh (DOM w) ∧ Evt B) ⟧
+listen+ t f (dom , evt) = (dom , map f (listen t dom) ∪ evt)

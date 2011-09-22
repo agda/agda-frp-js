@@ -2,7 +2,7 @@ open import FRP.JS.Time.Core using ( Time )
 
 module FRP.JS.RSet where
 
-infixr 4 _⇒_
+infixr 1 _⇒_
 
 RSet : Set₁
 RSet = Time → Set

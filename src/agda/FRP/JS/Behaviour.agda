@@ -1,4 +1,4 @@
-open import FRP.JS.Event using ( Evt )
+open import FRP.JS.Event using ( Evt ; accumBy )
 open import FRP.JS.RSet using ( RSet ; _⇒_ ; ⟦_⟧ ; ⟨_⟩ )
 
 module FRP.JS.Behaviour where
@@ -22,3 +22,6 @@ postulate
 {-# COMPILED_JS hold function(A) { return function(s) { return function(a) { return function(e) {
   return e.hold(a);
 }; }; }; } #-}
+
+accumHoldBy : ∀ {A B} → (B → A → B) → B → ⟦ Evt ⟨ A ⟩ ⇒ Beh ⟨ B ⟩ ⟧
+accumHoldBy f b σ = hold b (accumBy f b σ)

@@ -1,3 +1,5 @@
+open import FRP.JS.String using ( String )
+
 module FRP.JS.Nat where
 
 infixl 6 _+_
@@ -26,9 +28,22 @@ suc m + n = suc (m + n)
 {-# BUILTIN NATPLUS _+_ #-}
 {-# COMPILED_JS _+_ function (x) { return function (y) { return x+y; }; } #-}
 
+_∸_ : ℕ → ℕ → ℕ
+zero  ∸ n     = zero
+suc m ∸ zero  = suc m
+suc m ∸ suc n = m ∸ n
+
+{-# BUILTIN NATMINUS _∸_ #-}
+{-# COMPILED_JS _∸_ function (x) { return function (y) { return Math.max(0,x-y); }; } #-}
+
 _*_ : ℕ → ℕ → ℕ
 zero  * n = zero
 suc m * n = n + m * n
 
 {-# BUILTIN NATTIMES _*_ #-}
 {-# COMPILED_JS _*_ function (x) { return function (y) { return x*y; }; } #-}
+
+postulate
+  toString : ℕ → String
+
+{-# COMPILED_JS toString function(x) { return x.toString(); } #-}

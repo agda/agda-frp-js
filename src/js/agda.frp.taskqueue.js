@@ -47,7 +47,7 @@ define(function() {
 	this.running = false;
 	this.wakeup(taskTime);
     };
-    // A workaroun for IE
+    // A workaround for IE
     if (Object.keys) {
 	TaskQueue.prototype.minkey = function(obj) {
 	    return Math.min.apply(Math,Object.keys(obj));
@@ -87,6 +87,12 @@ define(function() {
 	    this.wakeup(when);
 	}
     };
+    // An optimized version of schedule(now,task); run(now);
+    TaskQueue.prototype.scheduleRun = function(when,task) {
+	if (!this.futureTasks[when]) { this.futureTasks[when] = {}; }
+	this.futureTasks[when][task.uid] = task;
+	this.run(when);
+    }
     TaskQueue.prototype.reRank = function(oldRank,task) {
 	if (this.tasks[oldRank] && this.tasks[oldRank][task.uid]) {
 	    delete this.tasks[oldRank][task.uid];

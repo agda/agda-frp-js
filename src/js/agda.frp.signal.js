@@ -143,6 +143,9 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     Event.prototype.map = function(fun) {
 	return new MapEvent(fun,this);
     }
+    Event.prototype.accumBy = function(fun,init) {
+	return new AccumByEvent(fun,init,this);
+    }
     Event.prototype.merge = function(event) {
 	return new MergeEvent(this,event);
     }
@@ -200,6 +203,17 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     MapEvent.prototype.notify = function(now,value) {
 	this.notifyUpstream(now,this.fun(now,value));
     }
+    // Accumulate a function over an event
+    function AccumByEvent(fun,init,downstream) {
+	this.fun = fun;
+	this.state = init;
+	Event1.call(this,downstream);
+    }
+    Event1.prototype.mixin(AccumByEvent.prototype);
+    AccumByEvent.prototype.notify = function(now,value) {
+	this.state = this.fun(now,this.state,value);
+	this.notifyUpstream(now,this.state);
+    }
     // Merge two event streams
     function MergeEvent(downstream1,downstream2) {
 	Event2.call(this,downstream1,downstream2);
@@ -211,7 +225,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     }
     MergeEvent.prototype.run = function(now) {
 	// This is a nondeterministic merge.
-	this.notifyUpstream(now,value);
+	this.notifyUpstream(now,this.value);
 	delete this.value;
     }
     // Filter an event stream
@@ -516,6 +530,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     // Document Object World, provides context (in particular event streams) for DOM behaviours
     function DOW() {
     }
+    DOW.prototype.rank = 0;
     DOW.prototype.child = function(tag) {
 	if (!this.children) { 
 	    this.children = {};
@@ -598,8 +613,9 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	    var now = Math.max(evt.timeStamp,self.taskQueue.time + 1);
 	    currentDOW = self.downstream;
 	    currentDOWEvent = evt;
-	    self.notifyUpstream(now,evt);
-	    self.taskQueue.run(now);
+	    self.event = evt;
+	    self.taskQueue.scheduleRun(now,self);
+	    self.event = undefined;
 	    currentDOW = undefined;
 	    currentDOWEvent = undefined;
 	}
@@ -610,6 +626,9 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	}
     }
     Event1.prototype.mixin(DOWEvent.prototype);
+    DOWEvent.prototype.run = function(now) {
+	this.notifyUpstream(now,this.event);
+    }
     // Geolocation, using the HTML5 geolocation API
     function GeolocationBehaviour() {
 	var self = this;
@@ -640,8 +659,11 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     GeolocationBehaviour.prototype.notify = function(now,value) {
 	// Low-level events must have distinct timestamps
 	now = Math.max(now,this.taskQueue.time + 1);
-	this.notifyUpstream(now,value);
-	this.taskQueue.run(now);
+	this.location = value;
+	this.taskQueue.scheduleRun(now,this);
+    }
+    GeolocationBehaviour.prototype.run = function(now) {
+	this.notifyUpstream(now,this.location);
     }
     var geolocation = new GeolocationBehaviour();
     // Exports
