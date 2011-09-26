@@ -120,6 +120,29 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	this.downstream1.check();
 	this.downstream2.check();
     };
+    // A signal with an array of downstream neighbours
+    function Signal$(downstream) {
+	this.downstream = downstream;
+	Signal.call(this);
+	for (var i = 0 ; i < downstream.length ; i++) {
+	    downstream[i].addUpstream(this);
+	}
+    }
+    Signal.prototype.mixin(Signal$.prototype);
+    Signal$.prototype.getRank = function() { 
+	var result = 0;
+	for (var i = 0 ; i < this.downstream.length ; i++) {
+	    if (result <= this.downstream[i].rank) {
+		result = this.downstream[i].rank + 1;
+	    }
+	}
+	return result;
+    }
+    Signal$.prototype.dispose = function() {
+	for (var i = 0 ; i < this.downstream.length ; i++) {
+	    this.downstream[i].check();
+	}
+    };
     // Events are signals generating discrete signals.  During the
     // timeslice when an event is created, new upstream neighbours can
     // be added. This means that if an event arrives during the start
@@ -147,7 +170,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	return new AccumByEvent(fun,init,this);
     }
     Event.prototype.merge = function(event) {
-	return new MergeEvent(this,event);
+	return new MergeEvent([this,event]);
     }
     Event.prototype.filter = function(pred) {
 	return new FilterEvent(pred,this);
@@ -161,7 +184,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     Event.prototype.switcher = function(init) {
 	return new SwitchBehaviour(init,this);
     }
-    // Events with zero, one, or two downstream neighbours
+    // Events with zero, one, two or many downstream neighbours
     function Event0() {
 	Signal0.call(this);
 	Event.call(this);
@@ -177,6 +200,11 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	Event.call(this);
     }
     Event.prototype.mixin(Signal2.prototype.mixin(Event2.prototype));
+    function Event$(downstream) {
+	Signal$.call(this,downstream);
+	Event.call(this);
+    }
+    Event.prototype.mixin(Signal$.prototype.mixin(Event$.prototype));
     // An event which never fires
     function ZeroEvent() {
 	Event0.call(this);
@@ -214,11 +242,11 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	this.state = this.fun(now,this.state,value);
 	this.notifyUpstream(now,this.state);
     }
-    // Merge two event streams
-    function MergeEvent(downstream1,downstream2) {
-	Event2.call(this,downstream1,downstream2);
+    // Merge event streams
+    function MergeEvent(downstream) {
+	Event$.call(this,downstream);
     }
-    Event2.prototype.mixin(MergeEvent.prototype);
+    Event$.prototype.mixin(MergeEvent.prototype);
     MergeEvent.prototype.notify = function(now,value) {
 	this.value = value;
 	this.taskQueue.schedule(now,this);
@@ -227,6 +255,15 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
 	// This is a nondeterministic merge.
 	this.notifyUpstream(now,this.value);
 	delete this.value;
+    }
+    MergeEvent.prototype.merge = function(event) {
+	var downstream;
+	if (event.constructor === MergeEvent) {
+	    downstream = this.downstream.concat(event.downstream);
+	} else {
+	    downstream = this.downstream.concat(event);
+	}
+	return new MergeEvent(downstream);
     }
     // Filter an event stream
     function FilterEvent(pred,downstream) {
