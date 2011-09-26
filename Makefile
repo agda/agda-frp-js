@@ -1,7 +1,7 @@
 SRC_JS = require agda.frp agda.frp.main agda.frp.signal agda.frp.time agda.frp.mixin agda.frp.taskqueue
 
-DEMO_AGDA = FRP.JS.Demo.Hello FRP.JS.Demo.Clock FRP.JS.Demo.Button FRP.JS.Demo.Calculator FRP.JS.Demo.Geolocation
-DEMO_HTML = hello clock button calculator geolocation
+DEMO_AGDA = FRP.JS.Demo.Hello FRP.JS.Demo.Clock FRP.JS.Demo.Button FRP.JS.Demo.HRef FRP.JS.Demo.Calculator FRP.JS.Demo.Geolocation
+DEMO_HTML = hello clock button href calculator geolocation
 DEMO_CSS = demo
 DEMO_PNG = alu
 

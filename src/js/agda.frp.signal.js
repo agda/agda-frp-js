@@ -425,12 +425,24 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     mixin.singleton.mixin(DOMNodesBehaviour.prototype);
     DOMNodesBehaviour.prototype.setChildrenOf = function(node) {
 	this.replaceChildrenOf(node,0);
-	while (node.children.length > this.length) {
+	while (node.childNodes.length > this.length) {
 	    node.removeChild(node.lastChild);
+	}
+	if (node.attributes.length > this.attributes) {
+	    var keys = [];
+	    for (var i = 0; i < node.attributes.length; i++) {
+		var key = node.attributes.index(x).name;
+		if (!this.hasAttribute(key)) {
+		    key.push(key);
+		}
+	    }
+	    for (var i = 0; i < keys.length; i++) {
+		node.removeAttribute(keys[i]);
+	    }
 	}
     }
     DOMNodesBehaviour.prototype.replaceChildrenOf = function(node,index) {
-	if (node.children.length > index) {
+	if (node.childNodes.length > index) {
 	    this.replaceChildrenAt(node,index);
 	} else {
 	    this.appendChildrenOf(node);
@@ -444,6 +456,8 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     }
     DOMNodesBehaviour.prototype.addEventListener = function(type,listener) {}
     DOMNodesBehaviour.prototype.removeEventListener = function(type,listener) {}
+    DOMNodesBehaviour.prototype.attributes = 0;
+    DOMNodesBehaviour.prototype.hasAttribute = function(key) { return false; }
     // EmptyBehaviour <: DOMNodesBehaviour, Behaviour0<EmptyBehaviour>
     function EmptyBehaviour() {
 	DOMNodesBehaviour.call(this);
@@ -461,6 +475,7 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     DOMNodesBehaviour.prototype.mixin(Behaviour2.prototype.mixin(ConcatBehaviour.prototype));
     ConcatBehaviour.prototype.notify = function(now,value) {
         this.length = this.downstream1.length + this.downstream2.length;
+        this.attributes = this.downstream1.attributes + this.downstream2.attributes;
 	this.notifyUpstream(now,this);
     }
     ConcatBehaviour.prototype.appendChildrenOf = function(node) {
@@ -478,6 +493,42 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     ConcatBehaviour.prototype.removeEventListener = function(type,listener) {
 	this.downstream1.value.removeEventListener(type,listener);
 	this.downstream2.value.removeEventListener(type,listener);
+    }
+    ConcatBehaviour.prototype.hasAttribute = function(key) {
+	return this.downstream1.value.hasAttribute(key) || this.downstream2.value.hasAttribute(key);
+    }
+    // AttributeBehaviour <: DOMNodesBehaviour, Behaviour1<Behaviour<String>,AttributeBehaviour>
+    function AttributeBehaviour(key,downstream) {
+	this.key = key;
+	this.pool = [];
+	DOMNodesBehaviour.call(this);
+	Behaviour1.call(this,downstream);
+    }
+    DOMNodesBehaviour.prototype.mixin(Behaviour1.prototype.mixin(AttributeBehaviour.prototype));
+    AttributeBehaviour.prototype.notify = function(now,value) {
+	for (var i = 0; i < this.pool.length; i++) {
+	    this.pool[i].value = value;
+	}
+    }
+    AttributeBehaviour.prototype.appendChildrenOf = function(node) {
+	for (var i = 0; i < this.pool.length; i++) {
+	    var owner = this.pool[i].ownerElment;
+	    if ((!owner) || (owner === node )) {
+		node.setAttributeNode(this.pool[i]);
+		return;
+	    }
+	}
+	var attr = document.createAttribute(this.key);
+	this.pool.push(attr);
+	attr.value = this.downstream.value;
+	node.setAttributeNode(attr);
+    }
+    AttributeBehaviour.prototype.replaceChildrenAt = function(node,index) {
+	this.appendChildrenOf(node);
+    }
+    AttributeBehaviour.prototype.attributes = 1;
+    AttributeBehaviour.prototype.hasAttribute = function(key) {
+	return this.key === key;
     }
     // DOMNodeBehaviour <: DOMNodesBehaviour, Behaviour<DOMNodeBehaviour>
     function DOMNodeBehaviour() {
@@ -504,13 +555,13 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     DOMNodeBehaviour.prototype.replaceChildrenAt = function(node,index) {
 	for (var i = 0; i < this.pool.length; i++) {
 	    if((!this.pool[i].parentNode) || ((this.pool[i].parentNode === this) && (index <= this.pool[i].index))) {
-		node.insertBefore(node.children[index],this.pool[i]);
+		node.insertBefore(node.childNodes[index],this.pool[i]);
 		return;
 	    }
 	}
 	var fresh = this.build();
 	this.pool.push(fresh);
-	node.insertBefore(node.children[i],fresh);
+	node.insertBefore(node.childNodes[i],fresh);
     }
     DOMNodeBehaviour.prototype.length = 1;
     // TextBehaviour <: DOMNodeBehaviour, Behaviour1<String,TextBehaviour>
@@ -524,19 +575,6 @@ define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
     }
     TextBehaviour.prototype.build = function() {
 	return document.createTextNode(this.downstream.value);
-    }
-    // AttributeBehaviour <: DOMNodeBehaviour, Behaviour1<Behaviour<String>,AttributeBehaviour>
-    function AttributeBehaviour(key,downstream) {
-	this.key = key;
-	DOMNodeBehaviour.call(this);
-	Behaviour1.call(this,downstream);
-    }
-    DOMNodeBehaviour.prototype.mixin(Behaviour1.prototype.mixin(AttributeBehaviour.prototype));
-    AttributeBehaviour.prototype.update = function(node,value) {
-	node.setValue(value);
-    }
-    AttributeBehaviour.prototype.build = function() {
-	return document.createAttributeNode(this.key,this.downstream.value);
     }
     // ElementBehaviour <: DOMNodeBehaviour, Behaviour2<Behaviour<DOMNodesBehaviour>,DOW,ElementBehaviour>
     function ElementBehaviour(tag,downstream1,downstream2) {

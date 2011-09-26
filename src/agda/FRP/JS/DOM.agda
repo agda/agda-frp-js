@@ -31,10 +31,12 @@ postulate
 postulate
   DOM : DOW → RSet
   text : ∀ {w} → ⟦ Beh ⟨ String ⟩ ⇒ Beh (DOM w) ⟧
+  attr : ∀ {w} → String → ⟦ Beh ⟨ String ⟩ ⇒ Beh (DOM w) ⟧
   element : ∀ a {w} → ⟦ Beh (DOM (child a w)) ⇒ Beh (DOM w) ⟧
   [] : ∀ {w} → ⟦ Beh (DOM w) ⟧
   _++_ : ∀ {w} → ⟦ Beh (DOM (left w)) ⇒ Beh (DOM (right w)) ⇒ Beh (DOM w) ⟧
 
+{-# COMPILED_JS attr function(w) { return function(k) { return function(s) { return function(b) { return b.attribute(k); }; }; }; } #-}
 {-# COMPILED_JS text function(w) { return function(s) { return function(b) { return b.text(); }; }; } #-}
 {-# COMPILED_JS element function(a) { return function(w) { return function(s) { return function(b) { return w.element(a,b); }; }; }; } #-}
 {-# COMPILED_JS [] function(w) { return require("agda.frp").empty; } #-}
@@ -53,6 +55,9 @@ _+++_ : ∀ {A w} → ⟦ (Beh (DOM (left w)) ∧ Evt A) ⇒ (Beh (DOM (right w)
 
 text+ : ∀ {A w} → ⟦ Beh ⟨ String ⟩ ⇒ (Beh (DOM w) ∧ Evt A) ⟧
 text+ msg = (text msg , ∅)
+
+attr+ : ∀ {A w} → String → ⟦ Beh ⟨ String ⟩ ⇒ (Beh (DOM w) ∧ Evt A) ⟧
+attr+ key val = (attr key val , ∅)
 
 element+ : ∀ a {A w} → ⟦ (Beh (DOM (child a w)) ∧ Evt A) ⇒ (Beh (DOM w) ∧ Evt A) ⟧
 element+ a (dom , evt) = (element a dom , evt)
