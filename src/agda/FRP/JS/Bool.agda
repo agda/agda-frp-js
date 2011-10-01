@@ -1,5 +1,6 @@
 {-# OPTIONS --universe-polymorphism #-}
-open import FRP.JS.Level using ( Level )
+
+import FRP.JS.Level
 
 module FRP.JS.Bool where
 
@@ -21,7 +22,7 @@ not false = true
 
 {-# COMPILED_JS not function(x) { return !x; } #-}
 
-if_then_else_ : ∀ {a : Level} {A : Set a} → Bool → A → A → A
+if_then_else_ : ∀ {α} {A : Set α} → Bool → A → A → A
 if true  then t else f = t
 if false then t else f = f
 

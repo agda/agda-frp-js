@@ -1,7 +1,8 @@
-open import FRP.JS.String using ( String )
+open import FRP.JS.Bool using ( Bool ; _∨_ )
 
 module FRP.JS.Nat where
 
+infixr 4 _≤_ _<_ _==_
 infixl 6 _+_
 infixl 7 _*_
 
@@ -20,6 +21,7 @@ data ℕ : Set where
 } #-}
 {-# COMPILED_JS zero 0 #-}
 {-# COMPILED_JS suc function (x) { return x+1; } #-}
+
 
 _+_ : ℕ → ℕ → ℕ
 zero  + n = n
@@ -43,7 +45,22 @@ suc m * n = n + m * n
 {-# BUILTIN NATTIMES _*_ #-}
 {-# COMPILED_JS _*_ function (x) { return function (y) { return x*y; }; } #-}
 
-postulate
-  toString : ℕ → String
+private
+ primitive
+  primNatEquality : ℕ → ℕ → Bool
+  primNatLess : ℕ → ℕ → Bool
 
-{-# COMPILED_JS toString function(x) { return x.toString(); } #-}
+_==_ : ℕ → ℕ → Bool
+_==_ = primNatEquality
+
+{-# COMPILED_JS _==_ function (x) { return function (y) { return x===y; }; } #-}
+
+_<_ : ℕ → ℕ → Bool
+_<_ = primNatLess
+
+{-# COMPILED_JS _<_ function (x) { return function (y) { return x<y; }; } #-}
+
+_≤_ : ℕ → ℕ → Bool
+x ≤ y = (x < y) ∨ (x == y)
+
+{-# COMPILED_JS _≤_ function (x) { return function (y) { return x<=y; }; } #-}
