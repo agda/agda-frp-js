@@ -46,3 +46,8 @@ Put all the .js files (including require.js and the agda.frp.*.js
 files) in the same directory as hello.html.
 
 Load hello.html in a browser, and enjoy.
+
+There are unit tests in FRP.JS.Test, which link against John Resig's
+QUnit (http://docs.jquery.com/QUnit). To run the tests, first "make tests",
+then load build/tests.html in a browser.
+
