@@ -1,7 +1,6 @@
 open import FRP.JS.Nat using ( ℕ ; suc ; _+_ ) renaming ( _==_ to _===_ )
 open import FRP.JS.List using ( List ; [] ; _∷_ ; [_] ; _++_ ; map ; foldr ; foldl ; build ; _==[_]_ )
 open import FRP.JS.Bool using ( Bool ; not )
-open import FRP.JS.True using ()
 open import FRP.JS.QUnit using ( TestSuite ; ok ; ok! ; test ; _,_ )
 
 module FRP.JS.Test.List where

@@ -1,6 +1,5 @@
 open import FRP.JS.String using ( _==_ )
 open import FRP.JS.Bool using ( Bool ; true ; false ; if_then_else_ ; _∧_ ; _∨_ ; not ; _xor_ )
-open import FRP.JS.True using ()
 open import FRP.JS.QUnit using ( TestSuite ; ok ; test ; _,_ )
 
 module FRP.JS.Test.Bool where

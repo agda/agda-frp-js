@@ -2,7 +2,6 @@ open import FRP.JS.Bool using ( not )
 open import FRP.JS.Nat using ( ℕ ; _==_ ; _+_ ; _*_ ; _∸_ ; _≤_ ; _<_ )
 open import FRP.JS.Nat.Show using ( show )
 open import FRP.JS.String using () renaming ( _==_ to _===_ )
-open import FRP.JS.True using ()
 open import FRP.JS.QUnit using ( TestSuite ; ok ; ok! ; test ; _,_ )
 
 module FRP.JS.Test.Nat where

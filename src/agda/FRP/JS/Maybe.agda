@@ -1,5 +1,6 @@
 {-# OPTIONS --universe-polymorphism #-}
 open import FRP.JS.Level using ( Level )
+open import FRP.JS.Bool using ( Bool ; true ; false )
 
 module FRP.JS.Maybe where
 
@@ -18,7 +19,7 @@ module FRP.JS.Maybe where
 -- array of strings can be translated to native array lookup).
 
 data Maybe {α : Level} (A : Set α) : Set α where
-  just : A → Maybe A
+  just : (a : A) → Maybe A
   nothing : Maybe A
 
 {-# COMPILED_JS Maybe function(x,v) { 
@@ -27,3 +28,9 @@ data Maybe {α : Level} (A : Set α) : Set α where
 } #-}
 {-# COMPILED_JS just require("agda.box").box #-}
 {-# COMPILED_JS nothing null #-}
+
+_==[_]_ : ∀ {α β A B} → Maybe {α} A → (A → B → Bool) → Maybe {β} B → Bool
+just a  ==[ p ] just b  = p a b
+just a  ==[ p ] nothing = false
+nothing ==[ p ] just b  = false
+nothing ==[ p ] nothing = true

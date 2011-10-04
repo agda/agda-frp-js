@@ -3,6 +3,7 @@
 open import FRP.JS.Nat using ( ℕ ; zero ; suc ; _≤_ ; _<_ ; _==_ )
 open import FRP.JS.Nat.Properties using ( ≤-impl-≯ ; <-impl-s≤ ; ≤≠-impl-< ; ≤-bot )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∧_ )
+open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
 open import FRP.JS.True using ( True ; contradiction ; dec ; yes ; no )
 
 module FRP.JS.Array where
@@ -36,6 +37,17 @@ ilookup (a ∷ as) i {m≤i} {i<n} | no   m≠i = ilookup as i {<-impl-s≤ (≤
   }; }; }; };
 }; }; }; } #-}
 
+ilookup? : ∀ {α A m n} → IArray {α} A m n → ℕ → Maybe A
+ilookup? []       i       = nothing
+ilookup? (a ∷ as) zero    = just a
+ilookup? (a ∷ as) (suc i) = ilookup? as i
+
+{-# COMPILED_JS ilookup? function() { return function() { return function() { return function() { 
+  return function(as) { return function(i) {
+    return require("agda.box").box(as.lookup(i));
+  }; };
+}; }; }; } #-}
+
 imap : ∀ {α β A B m n} → (A → B) → IArray {α} A m n → IArray {β} B m n
 imap f [] = []
 imap f (a ∷ as) = f a ∷ imap f as
@@ -52,15 +64,15 @@ iall f (a ∷ as) = f a ∧ iall f as
   return function(f) { return function(as) { return as.array.every(f); }; };
 }; }; }; } #-}
 
-iall₂ : ∀ {α β A B l m n} → (A → B → Bool) → IArray {α} A l m → IArray {β} B l n → Bool
-iall₂ f []       []       = true
-iall₂ f (a ∷ as) (b ∷ bs) = f a b ∧ iall₂ f as bs
-iall₂ f as       bs       = false
+_==i[_]_ : ∀ {α β A B l m n} → IArray {α} A l m → (A → B → Bool) → IArray {β} B l n → Bool
+[]       ==i[ p ] []       = true
+(a ∷ as) ==i[ p ] (b ∷ bs) = (p a b) ∧ (as ==i[ p ] bs)
+as       ==i[ p ] bs       = false
 
-{-# COMPILED_JS iall₂ function() { return function() { return function() { return function() { 
+{-# COMPILED_JS _==i[_]_ function() { return function() { return function() { return function() { 
   return function() { return function() { return function() { 
-    return function(f) { return function(as) { return function(bs) {
-      return require("agda.array").ievery2(as,bs,function(a,b) { return f(a)(b); });
+    return function(as) { return function(p) { return function(bs) {
+      return require("agda.array").ievery2(as,bs,function(a,b) { return p(a)(b); });
     }; }; };
   }; }; };
 }; }; }; } #-}
@@ -88,6 +100,13 @@ lookup [ as ] i {i<#as} = ilookup as i {≤-bot} {i<#as}
   return require("agda.array").lookup(as,i); 
 }; }; }; }; } #-}
 
+lookup? : ∀ {α A} → Array {α} A → ℕ → Maybe A
+lookup? [ as ] i = ilookup? as i
+
+{-# COMPILED_JS lookup? function() { return function() { return function(as) { return function(i) {
+  return require("agda.box").box(require("agda.array").lookup(as,i)); 
+}; }; }; } #-}
+
 map : ∀ {α β A B} → (A → B) → Array {α} A → Array {β} B
 map f [ as ] = [ imap f as ]
 
@@ -102,11 +121,11 @@ all f [ as ] = iall f as
   return function(f) { return function(as) { return as.every(f); }; };
 }; } #-}
 
-all₂ : ∀ {α β A B} → (A → B → Bool) → Array {α} A → Array {β} B → Bool
-all₂ f [ as ] [ bs ] = iall₂ f as bs
+_==[_]_ : ∀ {α β A B} → Array {α} A → (A → B → Bool) → Array {β} B → Bool
+[ as ] ==[ p ] [ bs ] = as ==i[ p ] bs
 
-{-# COMPILED_JS all₂ function() { return function() { return function() { return function() {
-  return function(f) { return function(as) { return function(bs) {
-    return require("agda.array").every2(as,bs,function(a,b) { return f(a)(b); });
+{-# COMPILED_JS _==[_]_ function() { return function() { return function() { return function() {
+  return function(as) { return function(p) { return function(bs) {
+    return require("agda.array").every2(as,bs,function(a,b) { return p(a)(b); });
   }; }; };
 }; }; }; } #-}

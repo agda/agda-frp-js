@@ -3,7 +3,7 @@ define (function() {
 	this.level = level;
 	this.prev = prev;
     }
-    var boxes = [ new Box(0) ];
+    var boxes = [ new Box(0,null) ];
     return {
 	box: function(value) {
 	    if (value === undefined) {
