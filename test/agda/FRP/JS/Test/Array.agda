@@ -1,5 +1,5 @@
 open import FRP.JS.Nat using ( ℕ ; suc ; _+_ ; _==_ )
-open import FRP.JS.Array using ( Array ; [] ; _∷_ ; [_] ; lookup? ; map ; _==[_]_ )
+open import FRP.JS.Array using ( Array ; IArray ; [] ; _∷_ ; [_] ; lookup? ; map ; _==[_]_ )
 open import FRP.JS.Bool using ( Bool ; not )
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing ) renaming ( _==[_]_ to _==?[_]_ )
 open import FRP.JS.QUnit using ( TestSuite ; ok ; ok! ; test ; _,_ )
@@ -11,6 +11,13 @@ xs ==* ys = xs ==[ _==_ ] ys
 
 _==?_ : Maybe ℕ → Maybe ℕ → Bool
 xs ==? ys = xs ==?[ _==_ ] ys
+
+iincr : ∀ {m n} → IArray ℕ m n → IArray ℕ m n
+iincr []       = []
+iincr (n ∷ ns) = suc n ∷ iincr ns
+
+incr : Array ℕ → Array ℕ
+incr [ ns ] = [ iincr ns ]
 
 tests : TestSuite
 tests = 
@@ -31,4 +38,7 @@ tests =
   , test "map" 
     ( ok "map suc []" (map suc [ [] ] ==* [ [] ])
     , ok "map suc [1]" (map suc [ 1 ∷ [] ] ==* [ 2 ∷ [] ])
-    , ok "map suc [1,2]" (map suc ([ 1 ∷ 2 ∷ [] ]) ==* [ 2 ∷ 3 ∷ [] ]) ) )
+    , ok "map suc [1,2]" (map suc ([ 1 ∷ 2 ∷ [] ]) ==* [ 2 ∷ 3 ∷ [] ])
+    , ok "incr []" (map suc [ [] ] ==* incr [ [] ])
+    , ok "incr [1]" (map suc [ 1 ∷ [] ] ==* incr [ 1 ∷ [] ])
+    , ok "incr [1,2]" (map suc ([ 1 ∷ 2 ∷ [] ]) ==* incr [ 1 ∷ 2 ∷ [] ]) ) )

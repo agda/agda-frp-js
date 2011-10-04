@@ -17,7 +17,7 @@ data IArray {α} (A : Set α) : ℕ → ℕ → Set α where
   _∷_ : ∀ {m n} → (a : A) → (as : IArray A (suc m) n) → IArray A m n
 
 {-# COMPILED_JS IArray function(xs,v) {
-  if (xs.array.length <= xs.offset) { return v["[]"](xs.offset); }
+  if ((xs.array.length) <= (xs.offset)) { return v["[]"](xs.offset); }
   else { return v["_∷_"](xs.offset,xs.array.length,xs.head(),xs.tail()); }
 } #-}
 {-# COMPILED_JS [] require("agda.array").iempty #-}
