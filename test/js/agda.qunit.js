@@ -4,8 +4,8 @@ require(["qunit.js"],function() {
 	var visitor = {
 	    "ε": function() {},
 	    "_,_": function(test1,test2) { test1(visitor); test2(visitor); },
-	    "ok": function(name,value) { ok(value,name); },
-	    "ok!": function(name,value) { ok(value,name); },
+	    "ok": function(name,fun) { ok(fun(),name); },
+	    "ok!": function(name,fun) { ok(fun(),name); },
 	    "test": function(name,tests) { test(name,function() { tests(visitor); }); },
 	    "suite": function(name,tests) { module(name); tests(visitor); }
 	};
