@@ -1,4 +1,4 @@
-open import FRP.JS.String using ( String ; _<_ )
+open import FRP.JS.String using ( String ; _==_ ; _<_ )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∧_ )
 open import FRP.JS.True using ( True )
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
@@ -36,13 +36,27 @@ IKeys✓ : IKeys → Set
 IKeys✓ ks = True (sorted ks)
 
 record Keys : Set where
-  constructor [_]
+  constructor keys
   field
     ikeys : IKeys
     {ikeys✓} : IKeys✓ ikeys
 
 open Keys public
 
-{-# COMPILED_JS [_] function(x,v) { return v["[_]"](require("agda.keys").iarray(x,null)); } #-}
+{-# COMPILED_JS Keys function(x,v) { return v.keys(require("agda.keys").iarray(x),null); } #-}
+{-# COMPILED_JS keys function(ks) { return function() { return ks.keys(); }; } #-}
 {-# COMPILED_JS ikeys function(ks) { return require("agda.keys").iarray(ks); } #-}
 {-# COMPILED_JS ikeys✓ function(ks) { return null; } #-}
+
+_∈i_ : String → IKeys → Bool
+l ∈i [] = false
+l ∈i (k ∷ ks)
+ with k == l
+... | true  = true
+... | false 
+ with k < l
+... | true  = l ∈i ks
+... | false = false
+
+_∈_ : String → Keys → Bool
+l ∈ keys ks = l ∈i ks

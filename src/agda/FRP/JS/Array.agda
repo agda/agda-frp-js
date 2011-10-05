@@ -18,7 +18,7 @@ data IArray {α} (A : Set α) : ℕ → ℕ → Set α where
   _∷_ : ∀ {m n} → (a : A) → (as : IArray A (suc m) n) → IArray A m n
 
 data Array {α} (A : Set α) : Set α where
-  [_] : ∀ {n} → (as : IArray A 0 n) → Array A
+  array : ∀ {n} → (as : IArray A 0 n) → Array A
 
 {-# COMPILED_JS IArray function(xs,v) {
   if ((xs.array.length) <= (xs.offset)) { return v["[]"](xs.offset); }
@@ -29,27 +29,27 @@ data Array {α} (A : Set α) : Set α where
   return function(x) { return function(xs) { return xs.cons(x); }; };
 }; } #-}
 {-# COMPILED_JS Array function(as,v) { 
-  return v["[_]"](as.length,require("agda.array").iarray(as));
+  return v.array(as.length,require("agda.array").iarray(as));
 } #-}
-{-# COMPILED_JS [_] function(n) { return function(as) { return as.array; }; } #-}
+{-# COMPILED_JS array function(n) { return function(as) { return as.array; }; } #-}
 
 length : ∀ {α A} → Array {α} A → ℕ
-length ([_] {n} as) = n
+length (array {n} as) = n
 
 {-# COMPILED_JS length function() { return function() { return function(as) { return as.length; }; }; } #-}
 
 iarray : ∀ {α A} → (as : Array {α} A) → IArray A 0 (length as)
-iarray [ as ] = as
+iarray (array as) = as
 
 {-# COMPILED_JS iarray function() { return function() { return require("agda.array").iarray; }; } #-}
 
 ⟨⟩ : ∀ {α A} → Array {α} A
-⟨⟩ = [ [] ]
+⟨⟩ = array []
 
 {-# COMPILED_JS ⟨⟩ function() { return function() { return require("agda.array").empty; }; } #-}
 
 ⟨_⟩ : ∀ {α A} → A → Array {α} A
-⟨ a ⟩ = [ a ∷ [] ]
+⟨ a ⟩ = array (a ∷ [])
 
 {-# COMPILED_JS ⟨_⟩ function() { return function() { return require("agda.array").singleton; }; } #-}
 
@@ -60,7 +60,7 @@ ilookup (a ∷ as) i {m≤i} {i<n} | yes  m=i = a
 ilookup (a ∷ as) i {m≤i} {i<n} | no   m≠i = ilookup as i {<-impl-s≤ (≤≠-impl-< m≤i m≠i)} {i<n}
 
 lookup : ∀ {α A} (as : Array {α} A) i → {i<#as : True (i < length as)} → A
-lookup [ as ] i {i<#as} = ilookup as i {≤-bot} {i<#as}
+lookup (array as) i {i<#as} = ilookup as i {≤-bot} {i<#as}
 
 {-# COMPILED_JS lookup function() { return function() { return function(as) { return function(i) { return function() {
   return require("agda.array").lookup(as,i); 
@@ -72,7 +72,7 @@ ilookup? (a ∷ as) zero    = just a
 ilookup? (a ∷ as) (suc i) = ilookup? as i
 
 lookup? : ∀ {α A} → Array {α} A → ℕ → Maybe A
-lookup? [ as ] i = ilookup? as i
+lookup? (array as) i = ilookup? as i
 
 {-# COMPILED_JS lookup? function() { return function() { return function(as) { return function(i) {
   return require("agda.box").box(require("agda.array").lookup(as,i)); 
@@ -83,7 +83,7 @@ imap f [] = []
 imap f (a ∷ as) = f a ∷ imap f as
 
 map : ∀ {α β A B} → (A → B) → Array {α} A → Array {β} B
-map f [ as ] = [ imap f as ]
+map f (array as) = array (imap f as)
 
 {-# COMPILED_JS map function() { return function() { return function() { return function() {
   return function(f) { return function(as) { return as.map(f); }; };
@@ -104,7 +104,7 @@ ifilter p (a ∷ as)
 ... | false = ifilter p as
 
 filter : ∀ {α A} → (A → Bool) → Array {α} A → Array A
-filter p [ as ] = [ ifilter p as ]
+filter p (array as) = array (ifilter p as)
 
 {-# COMPILED_JS filter function() { return function() {
   return function(p) { return function(as) { return as.filter(p); }; };
@@ -115,7 +115,7 @@ iall f []       = true
 iall f (a ∷ as) = f a ∧ iall f as
 
 all : ∀ {α A} → (A → Bool) → Array {α} A → Bool
-all f [ as ] = iall f as
+all f (array as) = iall f as
 
 {-# COMPILED_JS all function() { return function() {
   return function(f) { return function(as) { return as.every(f); }; };
@@ -127,7 +127,7 @@ _==i[_]_ : ∀ {α β A B l m n} → IArray {α} A l m → (A → B → Bool) �
 as       ==i[ p ] bs       = false
 
 _==[_]_ : ∀ {α β A B} → Array {α} A → (A → B → Bool) → Array {β} B → Bool
-[ as ] ==[ p ] [ bs ] = as ==i[ p ] bs
+array as ==[ p ] array bs = as ==i[ p ] bs
 
 {-# COMPILED_JS _==[_]_ function() { return function() { return function() { return function() {
   return function(as) { return function(p) { return function(bs) {
@@ -141,7 +141,7 @@ _⊆i[_]_ : ∀ {α β A B l m n} → IArray {α} A l m → (A → B → Bool) �
 (a ∷ as) ⊆i[ p ] (b ∷ bs) = (p a b) ∧ (as ⊆i[ p ] bs)
 
 _⊆[_]_ : ∀ {α β A B} → Array {α} A → (A → B → Bool) → Array {β} B → Bool
-[ as ] ⊆[ p ] [ bs ] = as ⊆i[ p ] bs
+array as ⊆[ p ] array bs = as ⊆i[ p ] bs
 
 {-# COMPILED_JS _⊆[_]_ function() { return function() { return function() { return function() {
   return function(as) { return function(p) { return function(bs) {
@@ -158,7 +158,7 @@ _++i_ : ∀ {α A l m n} → IArray {α} A l m → IArray A 0 n → IArray A l (
 (a ∷ as) ++i bs = a ∷ (as ++i bs)
 
 _++_ :  ∀ {α A} → Array {α} A → Array {α} A → Array {α} A
-[ as ] ++ [ bs ] = [ as ++i bs ]
+array as ++ array bs = array (as ++i bs)
 
 {-# COMPILED_JS _++_ function() { return function() {
   return function(as) { return function(bs) { return as.concat(bs); }; };

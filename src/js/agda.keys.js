@@ -27,7 +27,7 @@ define(["agda.mixin"],function(mixin) {
     IKeys.prototype.size = function() {
 	return this.array.length - this.offset;
     }
-    IKeys.prototype.array = function() {
+    IKeys.prototype.keys = function() {
 	if (this.offset > 0) {
 	    this.array = this.array.slice(this.offset);
 	    this.offset = 0;

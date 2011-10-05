@@ -1,4 +1,4 @@
-define(["agda.frp.taskqueue","agda.frp.mixin"],function(taskqueue,mixin) {
+define(["agda.frp.taskqueue","agda.mixin"],function(taskqueue,mixin) {
     // Signals are implemented as nodes in a dataflow graph.
     //
     // The lifecycle of a signal is:

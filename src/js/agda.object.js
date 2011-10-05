@@ -1,13 +1,13 @@
 define(["agda.keys"],function(keys) {
     var keysOf;
     if (Object.keys) {
-	keysOf = function(object) {
-	    return Object.keys(object).sort();
+	keysOf = function(obj) {
+	    return Object.keys(obj).sort();
 	}
     } else {
-	keysOf = function(object) {
+	keysOf = function(obj) {
 	    var result = [];
-	    for (key in object) {
+	    for (key in obj) {
 		result.push(key);
 	    }
 	    return result.sort();
@@ -15,108 +15,94 @@ define(["agda.keys"],function(keys) {
     }
     var numKeys;
     if (Object.keys){
-	numKeys = function(object) {
-	    return Object.keys(object).length;
+	numKeys = function(obj) {
+	    return Object.keys(obj).length;
 	}
     } else {
-	numKeys = function(object) {
+	numKeys = function(obj) {
 	    var result = 0;
-	    for (key in object) {
+	    for (key in obj) {
 		result++;
 	    }
 	    return result;
 	}
     }
     var IKeys = keys.IKeys;
-    function IObject(object,array,offset) {
-	this.object = object;
-	this.key = array[offset];
-	this.value = object[this.key];
+    function IObject(obj,array,offset) {
+	this.obj = obj;
 	IKeys.call(this,array,offset);
     }
     IKeys.prototype.mixin(IObject.prototype);
+    IObject.prototype.head = function() {
+	var key = this.array[this.offset];
+	var value = this.obj[key];
+	return { key: key, value: value };
+    }
     IObject.prototype.tail = function() {
-	if (!this.tail) {
-	    this.tail = new IObject(this.object,this.array,this.offset+1);
+	if (!this.tl) {
+	    this.tl = new IObject(this.obj,this.array,this.offset+1);
 	}
-	return this.tail;
+	return this.tl;
     }
     IObject.prototype.set = function(key,value) {
-	var object = this.object;
+	var obj = this.obj;
 	var keys = this.cons(key);
 	var array = keys.array;
-	var offset = keys.array;
-	if (object[key] !== undefined) {
-	    if (object[key] === value) { return this; }
+	var offset = keys.offset;
+	if (obj[key] !== undefined) {
+	    if (obj[key] === value) { return this; }
 	    var noo = {};
 	    for (var i = offset; i < keys.length; i++) {
-		noo[keys[i]] = object[keys[i]];
+		noo[keys[i]] = obj[keys[i]];
 	    }
-	    object = noo;
+	    obj = noo;
 	}
-	object[key] = value;
-	return new IObject(object,array.offset);
-    }
-    IObject.prototype.get = function(key) {
-	return this.object()[key];
-    }
-    IObject.prototype.map = function(fun) {
-	var object = {};
-	for (var i = this.offset; i < this.array.length; i++) {
-	    var key = this.array[i];
-	    object[key] = fun(this.object[key],key);
-	}
-	return new IObject(object,this.array,this.offset);
-    }
-    IObject.prototype.all = function(fun) {
-	for (var i = this.offset; i < this.array.length; i++) {
-	    if !(fun(this.object[key],key)) { return false; }
-	}
-	return true;
-    }
-    IObject.prototype.filter = function(fun) {
-	return filter(fun,this.object());
+	obj[key] = value;
+	return new IObject(obj,array,offset);
     }
     IObject.prototype.object = function() {
-	var object = this.object;
+	var obj = this.obj;
 	var array = this.array;
 	var offset = this.offset;
-	if (numKeys(object) == array.length - offset) {
-	    return object;
+	if (numKeys(obj) == array.length - offset) {
+	    return obj;
 	} else {
 	    var noo = {};
 	    for (var i = offset; i < array.length; i++) {
 		var key = array[i];
-		noo[key] = object[key];
+		noo[key] = obj[key];
 	    }
-	    this.object = noo;
+	    this.obj = noo;
+	    this.array = keysOf(noo);
+	    this.offset = 0;
 	    return noo;
 	}
     }
-    function map(fun,obj) {
-	var noo = {};
-	for (var key in obj) {
-	    noo[key] = fun(obj[key],key);
-	}
-	return noo;
-    }
-    function all(fun,obj) {
-	for (var key in obj) {
-	    if (!fun(obj[key],key)) { return false; }
-	}
-	return true;
-    }
-    function filter(fun,obj) {
-	var noo = {};
-	for (var key in obj) {
-	    if (fun(obj[key],key)) { noo[key] = obj[key]; }
-	}
-	return noo;
-    }
     return {
 	keys: keysOf,
-	iobject: function(object) { return new IObject(object,keysOf(object),0); },
-	lookup: function(object,key) { return box.box(object[key]); },
-        map: map
+	map: function(fun,obj) {
+	    var noo = {};
+	    for (var key in obj) {
+		noo[key] = fun(obj[key],key);
+	    }
+	    return noo;
+	},
+	all: function(fun,obj) {
+	    for (var key in obj) {
+		if (!fun(obj[key],key)) { return false; }
+	    }
+	    return true;
+	},
+	filter: function(fun,obj) {
+	    var noo = {};
+	    for (var key in obj) {
+		if (fun(obj[key],key)) { noo[key] = obj[key]; }
+	    }
+	    return noo;
+	},
+	iobject: function(obj) { return new IObject(obj,keysOf(obj),0); },
+	lookup: function(obj,key) { return obj[key]; },
+        iempty: function () { return new IObject({},[],0); },
+        singleton: function(key,value) { var result = {}; result[key] = value; return result; }
     }
 });
