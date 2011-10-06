@@ -12,8 +12,8 @@ data IKeys : Set where
   _∷_ : (k : String) → (ks : IKeys) → IKeys
 
 {-# COMPILED_JS IKeys function(x,v) {
-  if (x.array.length <= x.offset) { return v["[]"](); }
-  else { return v["_∷_"](x.head(),x.tail()); }
+  if ((x.array.length) <= (x.offset)) { return v["[]"](); }
+  else { return v["_∷_"](x.key(),x.tail()); }
 } #-}
 {-# COMPILED_JS [] require("agda.keys").iempty #-}
 {-# COMPILED_JS _∷_ function(k) { return function(ks) { return ks.cons(k); }; } #-}
@@ -22,7 +22,7 @@ head : IKeys → Maybe String
 head []       = nothing
 head (k ∷ ks) = just k
 
-{-# COMPILED_JS head function(ks) { return ks.head(); } #-}
+{-# COMPILED_JS head function(ks) { return require("agda.box").box(ks.key()); } #-}
 
 _<?_ : String → Maybe String → Bool
 k <? nothing = true

@@ -33,24 +33,21 @@ define(["agda.keys"],function(keys) {
 	IKeys.call(this,array,offset);
     }
     IKeys.prototype.mixin(IObject.prototype);
-    IObject.prototype.head = function() {
-	var key = this.array[this.offset];
-	var value = this.obj[key];
-	return { key: key, value: value };
+    IObject.prototype.key = function() {
+	return this.array[this.offset];
+    }
+    IObject.prototype.value = function() {
+	return this.obj[this.array[this.offset]];
     }
     IObject.prototype.tail = function() {
-	if (!this.tl) {
-	    this.tl = new IObject(this.obj,this.array,this.offset+1);
-	}
-	return this.tl;
+	return new IObject(this.obj,this.array,this.offset+1);
     }
     IObject.prototype.set = function(key,value) {
 	var obj = this.obj;
 	var keys = this.cons(key);
 	var array = keys.array;
 	var offset = keys.offset;
-	if (obj[key] !== undefined) {
-	    if (obj[key] === value) { return this; }
+	if ((obj[key] !== undefined) && (obj[key] !== value)) {
 	    var noo = {};
 	    for (var i = offset; i < keys.length; i++) {
 		noo[keys[i]] = obj[keys[i]];

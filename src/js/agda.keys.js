@@ -4,7 +4,9 @@ define(["agda.mixin"],function(mixin) {
 	this.offset = offset;
     }
     mixin.singleton.mixin(IKeys.prototype);
-    IKeys.prototype.head = function() {	return this.array[this.offset]; }
+    IKeys.prototype.key = function() {
+	return this.array[this.offset];
+    }
     IKeys.prototype.tail = function() {	
 	if (!this.tail) {
 	    this.tail = new IKeys(this.array,this.offset+1);

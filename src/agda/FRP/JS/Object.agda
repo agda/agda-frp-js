@@ -11,34 +11,23 @@ open import FRP.JS.String.Properties using ( <-trans )
 
 module FRP.JS.Object where
 
-infixr 4 _∷_
-infixr 5 _↦_
-
-record Field {α} (A : Set α) : Set α where
-  constructor _↦_
-  field
-    key : String
-    value : A
-
-{-# COMPILED_JS Field function(x,v) { return v(x.key,x.value); } #-}
-{-# COMPILED_JS _↦_ function(k) { return function(v) { return { "key": k, "value": v }; }; } #-}
-
-open Field public
+infixr 4 _↦_∷_
 
 data IObject {α} (A : Set α) : ∀ ks → IKeys✓ ks → Set α where
   [] : IObject A []k tt
-  _∷_ : ∀ (f : Field A) {ks k∷ks✓} →
-    (as : IObject A ks (∧-elim₂ {key f <? head ks} k∷ks✓)) →
-      IObject A (key f ∷k ks) k∷ks✓
+  _↦_∷_ : ∀ k (a : A) {ks k∷ks✓} → 
+    (as : IObject A ks (∧-elim₂ {k <? head ks} k∷ks✓)) →
+      IObject A (k ∷k ks) k∷ks✓
 
 {-# COMPILED_JS IObject function(x,v) {
-  if (x.array.length <= x.offset) { return v["[]"](); }
-  else { return v["_∷_"](x.head(),x.tail(),null,x.tail()); }
+  if ((x.array.length) <= (x.offset)) { return v["[]"](); }
+  else { return v["_↦_∷_"](x.key(),x.value(),x.tail(),null,x.tail()); }
 } #-}
 {-# COMPILED_JS [] require("agda.object").iempty() #-}
-{-# COMPILED_JS _∷_ function(f) { return function () { return function() { return function(as) {
-  return as.set(f.key,f.value);
-}; }; }; } #-}
+{-# COMPILED_JS _↦_∷_ function(k) { return function(a) { 
+  return function () { return function() { return function(as) {
+    return as.set(k,a);
+}; }; }; }; } #-}
 
 ikeys : ∀ {α A ks ks✓} → IObject {α} A ks ks✓ → IKeys
 ikeys {ks = ks} as = ks
@@ -68,12 +57,12 @@ open Object public
 
 {-# COMPILED_JS ⟨⟩ function() { return function() { return {}; }; } #-}
 
-⟨_⟩ : ∀ {α A} → Field A → Object {α} A
-⟨ a ⟩ = object (a ∷ [])
+⟨_↦_⟩ : ∀ {α A} → String → A → Object {α} A
+⟨ k ↦ a ⟩ = object (k ↦ a ∷ [])
 
-{-# COMPILED_JS ⟨_⟩ function() { return function() { return function(a) {
-  return require("agda.object").singleton(a.key,a.value); 
-}; }; } #-}
+{-# COMPILED_JS ⟨_↦_⟩ function() { return function() { return function(k) { return function(a) {
+  return require("agda.object").singleton(k,a); 
+}; }; }; } #-}
 
 ilookup? : ∀ {α A ks ks✓} → IObject {α} A ks ks✓ → String → Maybe A
 ilookup? [] l = nothing
