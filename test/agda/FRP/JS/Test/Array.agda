@@ -1,5 +1,5 @@
 open import FRP.JS.Nat using ( ℕ ; suc ; _+_ ; _==_ ; _<_ )
-open import FRP.JS.Array using ( Array ; IArray ; [] ; _∷_ ; array ; ⟨⟩ ; lookup ; lookup? ; map ; filter ; _==[_]_ ; _⊆[_]_ ; _++_ )
+open import FRP.JS.Array using ( Array ; IArray ; [] ; _∷_ ; array ; ⟨⟩ ; ⟨_ ; _,_ ; _⟩ ; lookup ; lookup? ; map ; filter ; _==[_]_ ; _⊆[_]_ ; _++_ )
 open import FRP.JS.Bool using ( Bool ; not )
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing ) renaming ( _==[_]_ to _==?[_]_ )
 open import FRP.JS.QUnit using ( TestSuite ; ok ; test ; _,_ )
@@ -24,15 +24,15 @@ iincr (n ∷ ns) = suc n ∷ iincr ns
 incr : Array ℕ → Array ℕ
 incr (array ns) = array (iincr ns)
 
-⟨0⟩ = array (0 ∷ [])
-⟨1⟩ = array (1 ∷ [])
-⟨2⟩ = array (2 ∷ [])
-⟨3⟩ = array (3 ∷ [])
-⟨0,1⟩ = array (0 ∷ 1 ∷ [])
-⟨0,2⟩ = array (0 ∷ 2 ∷ [])
-⟨1,2⟩ = array (1 ∷ 2 ∷ [])
-⟨2,3⟩ = array (2 ∷ 3 ∷ [])
-⟨0,1,2⟩ = array (0 ∷ 1 ∷ 2 ∷ [])
+⟨0⟩ = ⟨ 0 ⟩
+⟨1⟩ = ⟨ 1 ⟩
+⟨2⟩ = ⟨ 2 ⟩
+⟨3⟩ = ⟨ 3 ⟩
+⟨0,1⟩ = ⟨ 0 , 1 ⟩
+⟨0,2⟩ = ⟨ 0 , 2 ⟩
+⟨1,2⟩ = ⟨ 1 , 2 ⟩
+⟨2,3⟩ = ⟨ 2 , 3 ⟩
+⟨0,1,2⟩ = ⟨ 0 , 1 , 2 ⟩
 
 tests : TestSuite
 tests = 

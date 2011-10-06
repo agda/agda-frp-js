@@ -4,30 +4,38 @@ define (function() {
 	this.prev = prev;
     }
     var boxes = [ new Box(0,null) ];
-    return {
-	box: function(value) {
-	    if (value === undefined) {
-		return null;
-	    } else if (value === null) { 
-		return boxes[0];
-	    } else if (value.constructor === Box) {
-		var level = value.level + 1;
-		var box = boxes[level]
-		if (!box) {
-		    box = new Box(level,value);
-		    boxes[level] = box;
-		}
-		return box;
-	    } else {
-		return value;
+    function box(value) {
+	if (value === undefined) {
+	    return null;
+	} else if (value === null) { 
+	    return boxes[0];
+	} else if (value.constructor === Box) {
+	    var level = value.level + 1;
+	    var box = boxes[level]
+	    if (!box) {
+		box = new Box(level,value);
+		boxes[level] = box;
 	    }
-	},
-	unbox: function(value) {
-	    if (value.constructor === Box) {
-		return value.prev;
-	    } else {
-		return value;
+	    return box;
+	} else {
+	    return value;
 	    }
-	}
     }
+    function unbox(value) {
+	if (value.constructor === Box) {
+	    return value.prev;
+	} else {
+	    return value;
+	}
+    };
+    function handle(fun) {
+	return function() {
+	    try {
+		return box(fun.apply(arguments));
+	    } catch(e) {
+		return null;
+	    }
+	};
+    }
+    return { box: box, unbox: unbox, handle: handle };
 });

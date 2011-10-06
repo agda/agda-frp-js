@@ -8,10 +8,7 @@ define(["agda.mixin"],function(mixin) {
 	return this.array[this.offset];
     }
     IKeys.prototype.tail = function() {	
-	if (!this.tail) {
-	    this.tail = new IKeys(this.array,this.offset+1);
-	}
-	return this.tail;
+	return new IKeys(this.array,this.offset+1);
     }
     IKeys.prototype.cons = function(x) {
 	var offset = this.offset - 1;

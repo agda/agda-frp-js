@@ -48,11 +48,6 @@ iarray (array as) = as
 
 {-# COMPILED_JS ⟨⟩ function() { return function() { return require("agda.array").empty; }; } #-}
 
-⟨_⟩ : ∀ {α A} → A → Array {α} A
-⟨ a ⟩ = array (a ∷ [])
-
-{-# COMPILED_JS ⟨_⟩ function() { return function() { return require("agda.array").singleton; }; } #-}
-
 ilookup : ∀ {α A m n} → IArray {α} A m n → ∀ i → {m≤i : True (m ≤ i)} → {i<n : True (i < n)} → A
 ilookup []       i {m≤i} {i<m} = contradiction (≤-impl-≯ m≤i i<m)
 ilookup (a ∷ as) i {m≤i} {i<n} with dec _
@@ -163,3 +158,27 @@ array as ++ array bs = array (as ++i bs)
 {-# COMPILED_JS _++_ function() { return function() {
   return function(as) { return function(bs) { return as.concat(bs); }; };
 }; } #-}
+
+-- Surface syntax, e.g. ⟨ 1 , 2 , 3 ⟩ : Array ℕ
+
+infix 3 ⟨_
+infixr 4 _,_
+infixr 5 _⟩
+
+data Sugar {α} (A : Set α) : Set α where
+  ε : Sugar A
+  _,_ : A → Sugar A → Sugar A
+
+_⟩ : ∀ {α A} → A → Sugar {α} A
+a ⟩ = (a , ε)
+
+slength : ∀ {α A} → Sugar {α} A → ℕ → ℕ
+slength ε        m = m
+slength (a , as) m = slength as (1 + m)
+
+desugar : ∀ {α A m} as → IArray A m (slength {α} {A} as m)
+desugar ε        = []
+desugar (a , as) = a ∷ desugar as
+
+⟨_ : ∀ {α A} → Sugar {α} A → Array A
+⟨ as = array (desugar as)

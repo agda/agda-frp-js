@@ -32,14 +32,11 @@ sorted : IKeys → Bool
 sorted []       = true
 sorted (k ∷ ks) = (k <? head ks) ∧ (sorted ks)
 
-IKeys✓ : IKeys → Set
-IKeys✓ ks = True (sorted ks)
-
 record Keys : Set where
   constructor keys
   field
     ikeys : IKeys
-    {ikeys✓} : IKeys✓ ikeys
+    {ikeys✓} : True (sorted ikeys)
 
 open Keys public
 

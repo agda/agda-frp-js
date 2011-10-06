@@ -4,7 +4,7 @@ open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∨_ ; _∧_ )
 open import FRP.JS.True using ( True ; tt ; contradiction ; ∧-intro ; ∧-elim₁ ; ∧-elim₂ )
 open import FRP.JS.Nat using ( ℕ ; _+_ ; _∸_ )
-open import FRP.JS.Keys using ( Keys ; IKeys ; IKeys✓ ; _<?_ ; head ; _∈i_ ; _∈_ ) 
+open import FRP.JS.Keys using ( Keys ; IKeys ; _<?_ ; sorted ; head ; _∈i_ ; _∈_ ) 
   renaming ( keys to kkeys ; ikeys to ikeysk ; ikeys✓ to ikeysk✓ ; [] to []k ; _∷_ to _∷k_ )
 open import FRP.JS.String using ( String ; _<_ ; _==_ )
 open import FRP.JS.String.Properties using ( <-trans )
@@ -13,7 +13,7 @@ module FRP.JS.Object where
 
 infixr 4 _↦_∷_
 
-data IObject {α} (A : Set α) : ∀ ks → IKeys✓ ks → Set α where
+data IObject {α} (A : Set α) : ∀ ks → True (sorted ks) → Set α where
   [] : IObject A []k tt
   _↦_∷_ : ∀ k (a : A) {ks k∷ks✓} → 
     (as : IObject A ks (∧-elim₂ {k <? head ks} k∷ks✓)) →
@@ -32,7 +32,7 @@ data IObject {α} (A : Set α) : ∀ ks → IKeys✓ ks → Set α where
 ikeys : ∀ {α A ks ks✓} → IObject {α} A ks ks✓ → IKeys
 ikeys {ks = ks} as = ks
 
-ikeys✓ : ∀ {α A ks ks✓} as → IKeys✓ (ikeys {α} {A} {ks} {ks✓} as)
+ikeys✓ : ∀ {α A ks ks✓} as → True (sorted (ikeys {α} {A} {ks} {ks✓} as))
 ikeys✓ {ks✓ = ks✓} as = ks✓
 
 record Object {α} (A : Set α) : Set α where
@@ -52,17 +52,10 @@ open Object public
 
 open Object public
 
-⟨⟩ : ∀ {α A} → Object {α} A
-⟨⟩ = object []
+⟪⟫ : ∀ {α A} → Object {α} A
+⟪⟫ = object []
 
-{-# COMPILED_JS ⟨⟩ function() { return function() { return {}; }; } #-}
-
-⟨_↦_⟩ : ∀ {α A} → String → A → Object {α} A
-⟨ k ↦ a ⟩ = object (k ↦ a ∷ [])
-
-{-# COMPILED_JS ⟨_↦_⟩ function() { return function() { return function(k) { return function(a) {
-  return require("agda.object").singleton(k,a); 
-}; }; }; } #-}
+{-# COMPILED_JS ⟪⟫ function() { return function() { return {}; }; } #-}
 
 ilookup? : ∀ {α A ks ks✓} → IObject {α} A ks ks✓ → String → Maybe A
 ilookup? [] l = nothing
@@ -171,7 +164,7 @@ kfilter-<? f {ks✓ = l∷ls✓} (l ↦ a ∷ as) k k<l
 ... | true  = k<l
 ... | false = kfilter-<? f as k (<?-trans {m = head (ikeys as)} k<l (∧-elim₁ l∷ls✓))
 
-kfilter✓ : ∀ {α A} f {ks ks✓} as → IKeys✓ (kfilter {α} {A} f {ks} {ks✓} as)
+kfilter✓ : ∀ {α A} f {ks ks✓} as → True (sorted (kfilter {α} {A} f {ks} {ks✓} as))
 kfilter✓ f [] = tt
 kfilter✓ f {ks✓ = k∷ks✓} (k ↦ a ∷ as) 
  with f k a
@@ -202,3 +195,26 @@ filter f = filteri (λ k → f)
     return require("agda.object").filter(p,as);
   }; };
 }; } #-}
+
+-- Syntax sugar, e.g. ⟪ "a" ↦ 1 , "b" ↦ 2 , "c" ↦ 3 ⟫ : Object ℕ
+
+infix 3 ⟪_
+infixr 4 _↦_,_ _↦_⟫
+
+data Sugar {α} (A : Set α) : Set α where
+  ε : Sugar A
+  _↦_,_ : String → A → Sugar A → Sugar A
+
+_↦_⟫ : ∀ {α A} → String → A → Sugar {α} A
+k ↦ a ⟫ = (k ↦ a , ε)
+
+skeys : ∀ {α A} → Sugar {α} A → IKeys
+skeys ε            = []k
+skeys (k ↦ a , as) = k ∷k skeys as
+
+desugar : ∀ {α A} as {ks✓} → IObject A (skeys {α} {A} as) ks✓
+desugar ε            = []
+desugar (k ↦ a , as) = k ↦ a ∷ desugar as
+
+⟪_ : ∀ {α A} as → {ks✓ : True (sorted (skeys {α} {A} as))} → Object A
+⟪_ as {ks✓} = object {keys = kkeys (skeys as) {ks✓}} (desugar as)
