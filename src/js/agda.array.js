@@ -7,11 +7,9 @@ define(function() {
     IArray.prototype.tail = function() { return new IArray(this.array,this.offset+1); }
     IArray.prototype.cons = function(x) {
 	var offset = this.offset - 1;
-	var array;
-        if (this.array[offset] === undefined) {
-	    array = this.array;
-	} else {
-	    array = this.array.slice(0);
+	var array = this.array;
+        if ((array[offset] !== undefined) && (array[offset] !== x)) {
+	    array = array.slice(0);
 	}
 	array[offset] = x;
 	return new IArray(array,offset);
