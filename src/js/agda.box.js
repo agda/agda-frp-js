@@ -29,9 +29,9 @@ define (function() {
 	}
     };
     function handle(fun) {
-	return function() {
+	return function(arg) {
 	    try {
-		return box(fun.apply(arguments));
+		return box(fun(arg));
 	    } catch(e) {
 		return null;
 	    }

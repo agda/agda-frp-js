@@ -49,13 +49,14 @@ iarray (array as) = as
 {-# COMPILED_JS ⟨⟩ function() { return function() { return require("agda.array").empty; }; } #-}
 
 ilookup : ∀ {α A m n} → IArray {α} A m n → ∀ i → {m≤i : True (m ≤ i)} → {i<n : True (i < n)} → A
-ilookup []       i {m≤i} {i<m} = contradiction (≤-impl-≯ m≤i i<m)
-ilookup (a ∷ as) i {m≤i} {i<n} with dec _
-ilookup (a ∷ as) i {m≤i} {i<n} | yes  m=i = a
-ilookup (a ∷ as) i {m≤i} {i<n} | no   m≠i = ilookup as i {<-impl-s≤ (≤≠-impl-< m≤i m≠i)} {i<n}
+ilookup {m = m} []       i {m≤i} {i<m} = contradiction (≤-impl-≯ {m} {i} m≤i i<m)
+ilookup {m = m} (a ∷ as) i {m≤i} {i<n} 
+  with dec (m == i)
+... | yes m=i = a
+... | no  m≠i = ilookup as i {<-impl-s≤ (≤≠-impl-< {m} {i} m≤i m≠i)} {i<n}
 
 lookup : ∀ {α A} (as : Array {α} A) i → {i<#as : True (i < length as)} → A
-lookup (array as) i {i<#as} = ilookup as i {≤-bot} {i<#as}
+lookup (array as) i {i<#as} = ilookup as i {≤-bot {i}} {i<#as}
 
 {-# COMPILED_JS lookup function() { return function() { return function(as) { return function(i) { return function() {
   return require("agda.array").lookup(as,i); 

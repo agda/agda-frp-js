@@ -1,5 +1,3 @@
-{-# OPTIONS --universe-polymorphism #-}
-
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∨_ ; _∧_ )
 open import FRP.JS.True using ( True ; tt ; contradiction ; ∧-intro ; ∧-elim₁ ; ∧-elim₂ )
@@ -153,8 +151,8 @@ kfilter f (k ↦ a ∷ as)
 ... | false = kfilter f as
 
 <?-trans : ∀ {k l m} → True (k < l) → True (l <? m) → True (k <? m)
-<?-trans {m = nothing} k<l l<m = tt
-<?-trans {m = just m}  k<l l<m = <-trans k<l l<m
+<?-trans {k} {l} {nothing} k<l l<m = tt
+<?-trans {k} {l} {just m}  k<l l<m = <-trans {k} {l} {m} k<l l<m
 
 kfilter-<? : ∀ {α A} f {ks ks✓} as k → True (k <? head ks) → 
   True (k <? head (kfilter {α} {A} f {ks} {ks✓} as))

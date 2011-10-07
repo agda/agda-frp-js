@@ -1,4 +1,4 @@
-open import FRP.JS.List using ( List ; [] ; _∷_ ; build )
+open import FRP.JS.List using ( List ; [] ; _∷_ ; build ) renaming ( length to llength )
 open import FRP.JS.Char using ( Char ) renaming ( _<_ to _<C_ ; _==_ to _==C_ )
 open import FRP.JS.Nat using ( ℕ )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∧_ ; _∨_ )
@@ -40,6 +40,11 @@ toList = primStringToList
 {-# COMPILED_JS toList function(s) { 
   return exports.buildChars(function(n) { return s.charAt(n); },s.length);
 } #-}
+
+length : String → ℕ
+length s = llength (toList s)
+
+{-# COMPILED_JS length function(s) { return s.length; } #-}
 
 _<*_ : List Char → List Char → Bool
 as       <* []       = false

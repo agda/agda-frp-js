@@ -42,6 +42,9 @@ buildAppend as f (suc n) = buildAppend (f n ∷ as) f n
 build : ∀ {α} {A : Set α} → (ℕ → A) → ℕ → List A
 build = buildAppend []
 
+length : ∀ {α} {A : Set α} → List A → ℕ
+length = foldl (λ n a → suc n) zero
+
 _==[_]_ : ∀ {α β} {A : Set α} {B : Set β} → List A → (A → B → Bool) → List B → Bool
 []       ==[ p ] []       = true
 (a ∷ as) ==[ p ] (b ∷ bs) = (p a b) ∧ (as ==[ p ] bs)

@@ -22,6 +22,12 @@ not false = true
 
 {-# COMPILED_JS not function(x) { return !x; } #-}
 
+_==_ : Bool → Bool → Bool
+true  == b = b
+false == b = not b
+
+{-# COMPILED_JS _==_ function(x) { return function(y) { return x === y; }; } #-}
+
 if_then_else_ : ∀ {α} {A : Set α} → Bool → A → A → A
 if true  then t else f = t
 if false then t else f = f
