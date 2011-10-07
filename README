@@ -30,13 +30,13 @@ Now write an Agda program:
   open import FRP.JS.RSet using ( ⟦_⟧ )
 
   module Demo.Hello where
-
-  main : ⟦ Beh DOM ⟧
+ 
+  main : ∀ {w} → ⟦ Beh (DOM w) ⟧
   main = text ["Hello, world."]
 
 This program creates a text node whose content is always "Hello, World."
 
-Compile (using Agda 2.2.12 or later):
+Compile (using the darcs snapshot of Agda 2.2.11):
 
   agda --js Demo/Hello.agda
 
