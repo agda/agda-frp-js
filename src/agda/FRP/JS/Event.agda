@@ -9,7 +9,7 @@ postulate
   map : ∀ {A B} → ⟦ A ⇒ B ⟧ → ⟦ Evt A ⇒ Evt B ⟧
   ∅ : ∀ {A} → ⟦ Evt A ⟧
   _∪_ : ∀ {A} → ⟦ Evt A ⇒ Evt A ⇒ Evt A ⟧
-  accumBy : ∀ {A B} → (B → A → B) → B → ⟦ Evt ⟨ A ⟩ ⇒ Evt ⟨ B ⟩ ⟧
+  accumBy : ∀ {A B} → ⟦ ⟨ B ⟩ ⇒ A ⇒ ⟨ B ⟩ ⟧ → B → ⟦ Evt A ⇒ Evt ⟨ B ⟩ ⟧
 
 {-# COMPILED_JS map function(A) { return function(B) { 
   return function(f) { return function(s) { return function(e) { 
@@ -25,7 +25,7 @@ postulate
 
 {-# COMPILED_JS accumBy function(A) { return function(B) { return function(f) { 
   return function(b) { return function(s) { return function(e) {
-    return e.accumBy(function(t,b,a) { return f(b)(a); },b);
+    return e.accumBy(function(t,b,a) { return f(t)(b)(a); },b);
   }; }; };
 }; }; } #-} 
 

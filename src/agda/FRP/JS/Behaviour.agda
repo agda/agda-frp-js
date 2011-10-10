@@ -23,5 +23,5 @@ postulate
   return e.hold(a);
 }; }; }; } #-}
 
-accumHoldBy : ∀ {A B} → (B → A → B) → B → ⟦ Evt ⟨ A ⟩ ⇒ Beh ⟨ B ⟩ ⟧
+accumHoldBy : ∀ {A B} → ⟦ (⟨ B ⟩ ⇒ A ⇒ ⟨ B ⟩) ⟧ → B → ⟦ Evt A ⇒ Beh ⟨ B ⟩ ⟧
 accumHoldBy f b σ = hold b (accumBy f b σ)
