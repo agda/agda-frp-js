@@ -1,4 +1,4 @@
-open import FRP.JS.String using ( _==_ )
+open import FRP.JS.String using ( _≟_ )
 open import FRP.JS.Bool using ( Bool ; true ; false ; if_then_else_ ; _∧_ ; _∨_ ; not ; _xor_ )
 open import FRP.JS.QUnit using ( TestSuite ; ok ; test ; _,_ )
 
@@ -11,8 +11,8 @@ tests =
   , test "false" 
     ( ok "false" (not false) )
   , test "if" 
-    ( ok "if true" (if true then "a" else "b" == "a")
-    , ok "if false" (if false then "a" else "b" == "b") )
+    ( ok "if true" (if true then "a" else "b" ≟ "a")
+    , ok "if false" (if false then "a" else "b" ≟ "b") )
   , test "∧" 
     ( ok "true ∧ true" (true ∧ true)
     , ok "true ∧ false" (not (true ∧ false))

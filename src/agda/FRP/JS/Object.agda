@@ -4,7 +4,7 @@ open import FRP.JS.True using ( True ; tt ; contradiction ; ∧-intro ; ∧-elim
 open import FRP.JS.Nat using ( ℕ ; _+_ ; _∸_ )
 open import FRP.JS.Keys using ( Keys ; IKeys ; _<?_ ; sorted ; head ; _∈i_ ; _∈_ ) 
   renaming ( keys to kkeys ; ikeys to ikeysk ; ikeys✓ to ikeysk✓ ; [] to []k ; _∷_ to _∷k_ )
-open import FRP.JS.String using ( String ; _<_ ; _==_ )
+open import FRP.JS.String using ( String ; _<_ ; _≟_ )
 open import FRP.JS.String.Properties using ( <-trans )
 
 module FRP.JS.Object where
@@ -58,7 +58,7 @@ open Object public
 ilookup? : ∀ {α A ks ks✓} → IObject {α} A ks ks✓ → String → Maybe A
 ilookup? [] l = nothing
 ilookup? (k ↦ a ∷ as) l 
- with k == l
+ with k ≟ l
 ... | true  = just a
 ... | false
  with k < l
@@ -75,7 +75,7 @@ lookup? (object as) l = ilookup? as l
 ilookup : ∀ {α A ks ks✓} → IObject {α} A ks ks✓ → ∀ l → {l∈ks : True (l ∈i ks)} → A
 ilookup [] l {l∈[]} = contradiction l∈[]
 ilookup (k ↦ a ∷ as) l {l∈k∷ks}
- with k == l
+ with k ≟ l
 ... | true  = a
 ... | false
  with k < l
@@ -140,8 +140,8 @@ must p (just a) = p a
 _⊆[_]_ : ∀ {α β A B} → Object {α} A → (A → B → Bool) → Object {β} B → Bool
 as ⊆[ p ] bs = alli (λ k a → must (p a) (lookup? bs k)) as
 
-_==[_]_ : ∀ {α β A B} → Object {α} A → (A → B → Bool) → Object {β} B → Bool
-as ==[ p ] bs = (as ⊆[ p ] bs) ∧ (bs ⊆[(λ a b → true)] as)
+_≟[_]_ : ∀ {α β A B} → Object {α} A → (A → B → Bool) → Object {β} B → Bool
+as ≟[ p ] bs = (as ⊆[ p ] bs) ∧ (bs ⊆[(λ a b → true)] as)
 
 kfilter : ∀ {α A} → (String → A → Bool) → ∀ {ks ks✓} → IObject {α} A ks ks✓ → IKeys
 kfilter f []           = []k

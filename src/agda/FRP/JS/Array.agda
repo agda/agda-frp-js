@@ -1,4 +1,4 @@
-open import FRP.JS.Nat using ( ℕ ; zero ; suc ; _≤_ ; _<_ ; _==_ ; _+_ )
+open import FRP.JS.Nat using ( ℕ ; zero ; suc ; _≤_ ; _<_ ; _≟_ ; _+_ )
 open import FRP.JS.Nat.Properties using ( ≤-impl-≯ ; <-impl-s≤ ; ≤≠-impl-< ; ≤-bot )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∧_ )
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
@@ -49,7 +49,7 @@ iarray (array as) = as
 ilookup : ∀ {α A m n} → IArray {α} A m n → ∀ i → {m≤i : True (m ≤ i)} → {i<n : True (i < n)} → A
 ilookup {m = m} []       i {m≤i} {i<m} = contradiction (≤-impl-≯ {m} {i} m≤i i<m)
 ilookup {m = m} (a ∷ as) i {m≤i} {i<n} 
-  with dec (m == i)
+  with dec (m ≟ i)
 ... | yes m=i = a
 ... | no  m≠i = ilookup as i {<-impl-s≤ (≤≠-impl-< {m} {i} m≤i m≠i)} {i<n}
 
@@ -115,15 +115,15 @@ all f (array as) = iall f as
   return function(f) { return function(as) { return as.every(f); }; };
 }; } #-}
 
-_==i[_]_ : ∀ {α β A B l m n} → IArray {α} A l m → (A → B → Bool) → IArray {β} B l n → Bool
-[]       ==i[ p ] []       = true
-(a ∷ as) ==i[ p ] (b ∷ bs) = (p a b) ∧ (as ==i[ p ] bs)
-as       ==i[ p ] bs       = false
+_≟i[_]_ : ∀ {α β A B l m n} → IArray {α} A l m → (A → B → Bool) → IArray {β} B l n → Bool
+[]       ≟i[ p ] []       = true
+(a ∷ as) ≟i[ p ] (b ∷ bs) = (p a b) ∧ (as ≟i[ p ] bs)
+as       ≟i[ p ] bs       = false
 
-_==[_]_ : ∀ {α β A B} → Array {α} A → (A → B → Bool) → Array {β} B → Bool
-array as ==[ p ] array bs = as ==i[ p ] bs
+_≟[_]_ : ∀ {α β A B} → Array {α} A → (A → B → Bool) → Array {β} B → Bool
+array as ≟[ p ] array bs = as ≟i[ p ] bs
 
-{-# COMPILED_JS _==[_]_ function() { return function() { return function() { return function() {
+{-# COMPILED_JS _≟[_]_ function() { return function() { return function() { return function() {
   return function(as) { return function(p) { return function(bs) {
     return require("agda.array").equals(as,bs,function(a,b) { return p(a)(b); });
   }; }; };

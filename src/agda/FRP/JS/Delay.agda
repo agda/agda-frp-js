@@ -1,5 +1,9 @@
-open import FRP.JS.Nat using ( ℕ ; float ) renaming ( _+_ to _+n_ ; _∸_ to _∸n_ ; _*_ to _*n_ )
-open import FRP.JS.Float using ( ℝ ) renaming ( _/_ to _/r_ )
+open import FRP.JS.Nat using ( ℕ ; float )
+  renaming ( _+_ to _+n_ ; _∸_ to _∸n_ ; _*_ to _*n_ ; _≟_ to _≟n_ ; _≠_ to _≠n_ ; _/_ to _/n_ ; _/?_ to _/?n_ )
+open import FRP.JS.Float using ( ℝ )
+open import FRP.JS.Bool using ( Bool )
+open import FRP.JS.True using ( True )
+open import FRP.JS.Maybe using ( Maybe )
 
 module FRP.JS.Delay where
 
@@ -8,6 +12,16 @@ data Delay : Set where
 
 {-# COMPILED_JS Delay function(x,v) { return v["_ms"](x); } #-}
 {-# COMPILED_JS _ms function(d) { return d; } #-}
+
+_≟_ : Delay → Delay → Bool
+(d ms) ≟ (e ms) = d ≟n e
+
+{-# COMPILED_JS _≟_ function(d) { return function(e) { return d === e; }; } #-}
+
+_≠_ : Delay → Delay → Bool
+(d ms) ≠ (e ms) = d ≠n e
+
+{-# COMPILED_JS _≠_ function(d) { return function(e) { return d !== e; }; } #-}
 
 _+_ : Delay → Delay → Delay
 (d ms) + (e ms) = (d +n e) ms
@@ -24,10 +38,15 @@ n * (d ms) = (n *n d) ms
 
 {-# COMPILED_JS _*_ function(n) { return function(d) { return n * d; }; } #-}
 
-_/_ : Delay → Delay → ℝ
-(d ms) / (e ms) = float d /r float d
+_/_ : ∀ (d e : Delay) → {e≠0 : True (e ≠ 0 ms)} → ℝ
+_/_ (d ms) (e ms) {e≠0} = _/n_ d e {e≠0}
 
-{-# COMPILED_JS _*_ function(n) { return function(d) { return n * d; }; } #-}
+{-# COMPILED_JS _/_ function(d) { return function(e) { return function() { return d / e; }; }; } #-}
+
+_/?_ : Delay → Delay → Maybe ℝ
+(d ms) /? (e ms) = d /?n e
+
+{-# COMPILED_JS _/?_ function(d) { return function(e) { if (e === 0) { return null; } else { return d / e; } }; } #-}
 
 _sec : ℕ → Delay
 n sec = n * (1000 ms)

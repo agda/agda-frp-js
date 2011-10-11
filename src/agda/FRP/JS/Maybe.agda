@@ -27,8 +27,8 @@ data Maybe {α} (A : Set α) : Set α where
 {-# COMPILED_JS just require("agda.box").box #-}
 {-# COMPILED_JS nothing null #-}
 
-_==[_]_ : ∀ {α β A B} → Maybe {α} A → (A → B → Bool) → Maybe {β} B → Bool
-just a  ==[ p ] just b  = p a b
-just a  ==[ p ] nothing = false
-nothing ==[ p ] just b  = false
-nothing ==[ p ] nothing = true
+_≟[_]_ : ∀ {α β A B} → Maybe {α} A → (A → B → Bool) → Maybe {β} B → Bool
+just a  ≟[ p ] just b  = p a b
+just a  ≟[ p ] nothing = false
+nothing ≟[ p ] just b  = false
+nothing ≟[ p ] nothing = true

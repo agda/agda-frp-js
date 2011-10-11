@@ -1,11 +1,11 @@
 {-# OPTIONS --sized-types #-}
 
-open import FRP.JS.Bool using ( Bool ; true ; false ) renaming ( _==_ to _==b_ )
+open import FRP.JS.Bool using ( Bool ; true ; false ) renaming ( _≟_ to _≟b_ )
 open import FRP.JS.Nat using ( ℕ )
-open import FRP.JS.Float using ( ℝ ) renaming ( _==_ to _==n_ )
-open import FRP.JS.String using ( String ) renaming ( _==_ to _==s_ )
-open import FRP.JS.Array using ( Array ) renaming ( lookup? to alookup? ; _==[_]_ to _==a[_]_ )
-open import FRP.JS.Object using ( Object ) renaming ( lookup? to olookup? ; _==[_]_ to _==o[_]_ )
+open import FRP.JS.Float using ( ℝ ) renaming ( _≟_ to _≟n_ )
+open import FRP.JS.String using ( String ) renaming ( _≟_ to _≟s_ )
+open import FRP.JS.Array using ( Array ) renaming ( lookup? to alookup? ; _≟[_]_ to _≟a[_]_ )
+open import FRP.JS.Object using ( Object ) renaming ( lookup? to olookup? ; _≟[_]_ to _≟o[_]_ )
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
 open import FRP.JS.Size using ( Size ; ↑_ )
 
@@ -50,11 +50,11 @@ lookup? (just (object js)) {true}  k = olookup? js k
 lookup? (just (array js))  {false} i = alookup? js i
 lookup? _                          _ = nothing
 
-_==_ : ∀ {σ τ} → JSON {σ} → JSON {τ} → Bool
-null      == null      = true
-string s  == string t  = s ==s t
-float m   == float n   = m ==n n
-bool b    == bool c    = b ==b c
-array js  == array ks  = js ==a[ _==_ ] ks
-object js == object ks = js ==o[ _==_ ] ks
-_         == _         = false
+_≟_ : ∀ {σ τ} → JSON {σ} → JSON {τ} → Bool
+null      ≟ null      = true
+string s  ≟ string t  = s ≟s t
+float m   ≟ float n   = m ≟n n
+bool b    ≟ bool c    = b ≟b c
+array js  ≟ array ks  = js ≟a[ _≟_ ] ks
+object js ≟ object ks = js ≟o[ _≟_ ] ks
+_         ≟ _         = false

@@ -1,4 +1,4 @@
-open import FRP.JS.String using ( String ; _==_ ; _<_ )
+open import FRP.JS.String using ( String ; _≟_ ; _<_ )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∧_ )
 open import FRP.JS.True using ( True )
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
@@ -48,7 +48,7 @@ open Keys public
 _∈i_ : String → IKeys → Bool
 l ∈i [] = false
 l ∈i (k ∷ ks)
- with k == l
+ with k ≟ l
 ... | true  = true
 ... | false 
  with k < l

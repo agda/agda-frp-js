@@ -8,11 +8,11 @@ not false = true
 
 {-# COMPILED_JS not function(x) { return !x; } #-}
 
-_==_ : Bool → Bool → Bool
-true  == b = b
-false == b = not b
+_≟_ : Bool → Bool → Bool
+true  ≟ b = b
+false ≟ b = not b
 
-{-# COMPILED_JS _==_ function(x) { return function(y) { return x === y; }; } #-}
+{-# COMPILED_JS _≟_ function(x) { return function(y) { return x === y; }; } #-}
 
 if_then_else_ : ∀ {α} {A : Set α} → Bool → A → A → A
 if true  then t else f = t
@@ -39,4 +39,7 @@ _xor_ : Bool → Bool → Bool
 true  xor b = not b
 false xor b = b
 
-{-# COMPILED_JS _xor_ function(x) { return function(y) { return x ^ y; }; } #-}
+_≠_ = _xor_
+
+{-# COMPILED_JS _xor_ function(x) { return function(y) { return x !== y; }; } #-}
+{-# COMPILED_JS _≠_ function(x) { return function(y) { return x !== y; }; } #-}

@@ -2,6 +2,8 @@ open import FRP.JS.QUnit using ( TestSuites ; suite ; _,_ )
 
 import FRP.JS.Test.Bool
 import FRP.JS.Test.Nat
+import FRP.JS.Test.Int
+import FRP.JS.Test.Float
 import FRP.JS.Test.String
 import FRP.JS.Test.Maybe
 import FRP.JS.Test.List
@@ -16,6 +18,9 @@ tests : TestSuites
 tests = 
   ( suite "Bool"     FRP.JS.Test.Bool.tests 
   , suite "Nat"      FRP.JS.Test.Nat.tests
+  , suite "Nat"      FRP.JS.Test.Nat.tests
+  , suite "Int"      FRP.JS.Test.Int.tests
+  , suite "Float"    FRP.JS.Test.Float.tests
   , suite "String"   FRP.JS.Test.String.tests
   , suite "Maybe"    FRP.JS.Test.Maybe.tests
   , suite "List"     FRP.JS.Test.List.tests
