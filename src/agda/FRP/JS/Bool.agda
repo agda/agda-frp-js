@@ -1,20 +1,6 @@
-{-# OPTIONS --universe-polymorphism #-}
-
-import FRP.JS.Level
-
 module FRP.JS.Bool where
 
-data Bool : Set where
-  true  : Bool
-  false : Bool
-
-{-# BUILTIN BOOL  Bool  #-}
-{-# BUILTIN TRUE  true  #-}
-{-# BUILTIN FALSE false #-}
-
-{-# COMPILED_JS Bool function(x,v) { if (x) { return v["true"](); } else { return v["false"](); } } #-}
-{-# COMPILED_JS true true #-}
-{-# COMPILED_JS false false #-}
+open import FRP.JS.Primitive public using ( Bool ; true ; false )
 
 not : Bool → Bool
 not true  = false

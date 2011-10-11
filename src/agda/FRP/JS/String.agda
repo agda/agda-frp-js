@@ -8,12 +8,7 @@ module FRP.JS.String where
 infixr 5 _++_
 infix 4 _==_
 
-postulate
-  String : Set
-
-{-# BUILTIN STRING String #-}
-
--- Data.String doesn't have bindings for JavaScript, so we define String here.
+open import FRP.JS.Primitive public using ( String )
 
 private
  primitive

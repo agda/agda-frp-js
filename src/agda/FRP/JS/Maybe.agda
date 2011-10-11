@@ -1,5 +1,3 @@
-{-# OPTIONS --universe-polymorphism #-}
-open import FRP.JS.Level using ( Level )
 open import FRP.JS.Bool using ( Bool ; true ; false )
 
 module FRP.JS.Maybe where
@@ -18,7 +16,7 @@ module FRP.JS.Maybe where
 -- corresponds to the JavaScript idiom (for example, a lookup in an
 -- array of strings can be translated to native array lookup).
 
-data Maybe {α : Level} (A : Set α) : Set α where
+data Maybe {α} (A : Set α) : Set α where
   just : (a : A) → Maybe A
   nothing : Maybe A
 

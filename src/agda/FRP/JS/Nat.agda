@@ -1,3 +1,6 @@
+open import FRP.JS.Float using ( ℝ ) renaming ( _/_ to _/r_ )
+open import FRP.JS.Int using ( ℤ ; _-_ ) renaming ( float to floatz ; show to showz )
+open import FRP.JS.Primitive using ( String )
 open import FRP.JS.Bool using ( Bool ; _∨_ )
 
 module FRP.JS.Nat where
@@ -6,22 +9,7 @@ infixr 4 _≤_ _<_ _==_
 infixl 6 _+_
 infixl 7 _*_
 
--- Data.Nat doesn't have bindings for JavaScript, so we define ℕ here.
-
-data ℕ : Set where
-  zero : ℕ
-  suc  : ℕ → ℕ
-
-{-# BUILTIN NATURAL ℕ    #-}
-{-# BUILTIN ZERO    zero #-}
-{-# BUILTIN SUC     suc  #-}
-
-{-# COMPILED_JS ℕ function (x,v) {
-  if (x < 1) { return v.zero(); } else { return v.suc(x-1); }
-} #-}
-{-# COMPILED_JS zero 0 #-}
-{-# COMPILED_JS suc function (x) { return x+1; } #-}
-
+open import FRP.JS.Primitive public using ( ℕ ; zero ; suc )
 
 _+_ : ℕ → ℕ → ℕ
 zero  + n = n
@@ -49,18 +37,33 @@ private
  primitive
   primNatEquality : ℕ → ℕ → Bool
   primNatLess : ℕ → ℕ → Bool
+  primNatToInteger : ℕ → ℤ
 
-_==_ : ℕ → ℕ → Bool
 _==_ = primNatEquality
+_<_ = primNatLess
++_ = primNatToInteger
 
 {-# COMPILED_JS _==_ function (x) { return function (y) { return x===y; }; } #-}
-
-_<_ : ℕ → ℕ → Bool
-_<_ = primNatLess
-
 {-# COMPILED_JS _<_ function (x) { return function (y) { return x<y; }; } #-}
+{-# COMPILED_JS +_ function (x) { return x; } #-}
+
+float : ℕ → ℝ
+float x = floatz (+ x)
+
+show : ℕ → String
+show x = showz (+ x)
+
+-_ : ℕ → ℤ
+-_ x = (+ 0) - (+ x)
+
+_/_ : ℕ → ℕ → ℝ
+x / y = float x /r float y
 
 _≤_ : ℕ → ℕ → Bool
 x ≤ y = (x < y) ∨ (x == y)
 
-{-# COMPILED_JS _≤_ function (x) { return function (y) { return x<=y; }; } #-}
+{-# COMPILED_JS float function (x) { return x; } #-}
+{-# COMPILED_JS show function (x) { return x.toString(); } #-}
+{-# COMPILED_JS -_ function (x) { return -x; } #-}
+{-# COMPILED_JS _/_ function (x) { return function (y) { return x / y; }; } #-}
+{-# COMPILED_JS _≤_ function (x) { return function (y) { return x <= y; }; } #-}

@@ -1,5 +1,3 @@
-{-# OPTIONS --universe-polymorphism #-}
-
 module FRP.JS.Level where
 
 infixl 6 _⊔_

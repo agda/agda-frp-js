@@ -1,11 +1,9 @@
-open import FRP.JS.Nat using ( ℕ ; _*_ )
-open import FRP.JS.String using ( String )
+open import FRP.JS.Delay using ( Delay )
 
 module FRP.JS.Time.Core where
 
-postulate
-  Time : Set
-  Delay : Set
-  _ms : ℕ → Delay
+data Time : Set where
+  epoch : Delay → Time
 
-{-# COMPILED_JS _ms function (x) { return x; } #-}
+{-# COMPILED_JS Time function(x,v) { return v.epoch(x); } #-}
+{-# COMPILED_JS epoch function(d) { return d; } #-}

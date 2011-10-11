@@ -1,5 +1,3 @@
-{-# OPTIONS --universe-polymorphism #-}
-
 open import FRP.JS.Nat using ( ℕ ; zero ; suc ; _≤_ ; _<_ ; _==_ ; _+_ )
 open import FRP.JS.Nat.Properties using ( ≤-impl-≯ ; <-impl-s≤ ; ≤≠-impl-< ; ≤-bot )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∧_ )
