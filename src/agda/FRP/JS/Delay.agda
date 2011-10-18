@@ -1,5 +1,6 @@
-open import FRP.JS.Nat using ( ℕ ; float )
-  renaming ( _+_ to _+n_ ; _∸_ to _∸n_ ; _*_ to _*n_ ; _≟_ to _≟n_ ; _≠_ to _≠n_ ; _/_ to _/n_ ; _/?_ to _/?n_ )
+open import FRP.JS.Nat using ( ℕ ; float ) renaming 
+  ( _+_ to _+n_ ; _∸_ to _∸n_ ; _*_ to _*n_ ; _≟_ to _≟n_ ; _≠_ to _≠n_
+  ; _/_ to _/n_ ; _/?_ to _/?n_ ; _≤_ to _≤n_ ; _<_ to _<n_ )
 open import FRP.JS.Float using ( ℝ )
 open import FRP.JS.Bool using ( Bool )
 open import FRP.JS.True using ( True )
@@ -22,6 +23,16 @@ _≠_ : Delay → Delay → Bool
 (d ms) ≠ (e ms) = d ≠n e
 
 {-# COMPILED_JS _≠_ function(d) { return function(e) { return d !== e; }; } #-}
+
+_≤_ : Delay → Delay → Bool
+(d ms) ≤ (e ms) = d ≤n e
+
+{-# COMPILED_JS _≤_ function(d) { return function(e) { return d <= e; }; } #-}
+
+_<_ : Delay → Delay → Bool
+(d ms) < (e ms) = d <n e
+
+{-# COMPILED_JS _<_ function(d) { return function(e) { return d < e; }; } #-}
 
 _+_ : Delay → Delay → Delay
 (d ms) + (e ms) = (d +n e) ms
