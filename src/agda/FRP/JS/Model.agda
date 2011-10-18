@@ -28,6 +28,10 @@ A × B = Σ A (λ a → B)
 data _≡_ {α} {A : Set α} (a : A) : A → Set α where
   refl : a ≡ a
 
+postulate
+  ≤-refl : ∀ t → True (t ≤ t)
+  ≤-trans : ∀ t u v → True (t ≤ u) → True (u ≤ v) → True (t ≤ v)
+
 -- Relations on Set
 
 _∋_↔_ : ∀ α → Set α → Set α → Set (↑ α)
@@ -97,6 +101,14 @@ _∋_++²_∋_ : ∀ αs {As Bs} → (αs ∋ As ⇔* Bs) → ∀ βs {Cs Ds} �
 αs ∋ ℜs ++² ε        ∋ tt       = ℜs
 αs ∋ ℜs ++² (βs , β) ∋ (ℑs , ℑ) = ((αs ∋ ℜs ++² βs ∋ ℑs) , ℑ)
 
+-- Intervals
+
+_[_,_] : ∀ {α} → RSet α → Time → Time → Set α
+A [ s , u ] = ∀ t → True (s ≤ t) → True (t ≤ u) → A t
+
+_[_,_]² : ∀ {α A B} → (α ∋ A ⇔ B) → ∀ s u → (α ∋ A [ s , u ] ↔ B [ s , u ])
+(ℜ [ s , u ]²) σ τ = ∀ t s≤t t≤u → ℜ t (σ t s≤t t≤u) (τ t s≤t t≤u)
+
 -- Type variables
 
 data TVar : Levels → Set₁ where
@@ -119,29 +131,32 @@ data TVar : Levels → Set₁ where
 
 data Typ (αs : Levels) : Set₁ where
   ⟨_⟩ : (A : Set) → Typ αs
-  _∧_ _⇒_ : (T : Typ αs) → (U : Typ αs) → Typ αs
-  var : (τ : TVar αs) → Typ αs
+  _∧_ _⇒_ _⊵_ : (T : Typ αs) → (U : Typ αs) → Typ αs
+  tvar : (τ : TVar αs) → Typ αs
   univ : ∀ α → (T : Typ (αs , α)) → Typ αs
 
 tlevel : ∀ {αs} → Typ αs → Level
-tlevel ⟨ A ⟩ = o
-tlevel (T ∧ U) = tlevel T ⊔ tlevel U
-tlevel (T ⇒ U) = tlevel T ⊔ tlevel U
-tlevel (var τ) = τlevel τ
+tlevel ⟨ A ⟩      = o
+tlevel (T ∧ U)    = tlevel T ⊔ tlevel U
+tlevel (T ⇒ U)    = tlevel T ⊔ tlevel U
+tlevel (T ⊵ U)    = tlevel T ⊔ tlevel U
+tlevel (tvar τ)   = τlevel τ
 tlevel (univ α T) = ↑ α ⊔ tlevel T
 
 T⟦_⟧ : ∀ {αs} (T : Typ αs) → RSets αs → RSet (tlevel T)
 T⟦ ⟨ A ⟩ ⟧    As t = A
 T⟦ T ∧ U ⟧    As t = T⟦ T ⟧ As t × T⟦ U ⟧ As t
 T⟦ T ⇒ U ⟧    As t = T⟦ T ⟧ As t → T⟦ U ⟧ As t
-T⟦ var τ ⟧    As t = τ⟦ τ ⟧ As t
+T⟦ T ⊵ U ⟧    As t = ∀ u → True (t ≤ u) → T⟦ T ⟧ As [ t , u ] → T⟦ U ⟧ As u
+T⟦ tvar τ ⟧   As t = τ⟦ τ ⟧ As t
 T⟦ univ α T ⟧ As t = ∀ (A : RSet α) → T⟦ T ⟧ (As , A) t
 
 T⟦_⟧² : ∀ {αs As Bs} (T : Typ αs) (ℜs : αs ∋ As ⇔* Bs) → (tlevel T ∋ T⟦ T ⟧ As ⇔ T⟦ T ⟧ Bs)
 T⟦ ⟨ A ⟩ ⟧²    ℜs t a       b       = a ≡ b
 T⟦ T ∧ U ⟧²    ℜs t (a , b) (c , d) = T⟦ T ⟧² ℜs t a c × T⟦ U ⟧² ℜs t b d
 T⟦ T ⇒ U ⟧²    ℜs t f       g       = ∀ {a b} → T⟦ T ⟧² ℜs t a b → T⟦ U ⟧² ℜs t (f a) (g b)
-T⟦ var τ ⟧²    ℜs t v       w       = τ⟦ τ ⟧² ℜs t v w
+T⟦ T ⊵ U ⟧²    ℜs t f       g       = ∀ u t≤u {σ τ} → (T⟦ T ⟧² ℜs [ t , u ]²) σ τ → T⟦ U ⟧² ℜs u (f u t≤u σ) (g u t≤u τ)
+T⟦ tvar τ ⟧²   ℜs t v       w       = τ⟦ τ ⟧² ℜs t v w
 T⟦ univ α T ⟧² ℜs t f       g       = ∀ {A B} (ℜ : α ∋ A ⇔ B) → T⟦ T ⟧² (ℜs , ℜ) t (f A) (g B)
 
 -- Contexts
@@ -201,25 +216,30 @@ tweaken : ∀ {αs} α βs → Typ (αs + βs) → Typ ((αs , α) + βs)
 tweaken α βs ⟨ A ⟩      = ⟨ A ⟩
 tweaken α βs (T ∧ U)    = tweaken α βs T ∧ tweaken α βs U
 tweaken α βs (T ⇒ U)    = tweaken α βs T ⇒ tweaken α βs U
-tweaken α βs (var τ)    = var (τweaken α βs τ)
+tweaken α βs (T ⊵ U)    = tweaken α βs T ⊵ tweaken α βs U
+tweaken α βs (tvar τ)   = tvar (τweaken α βs τ)
 tweaken α βs (univ β T) = univ β (tweaken α (βs , β) T)
 
 mutual
 
   ⟦tweaken⟧ : ∀ {αs} α βs (T : Typ (αs + βs)) As A Bs t → 
-    T⟦ T ⟧ (αs ∋ As ++ βs ∋ Bs) t → T⟦ tweaken α βs T ⟧ ((αs , α) ∋ (As , A) ++ βs ∋ Bs) t
+    T⟦ T ⟧ (αs ∋ As ++ βs ∋ Bs) t → 
+    T⟦ tweaken α βs T ⟧ ((αs , α) ∋ (As , A) ++ βs ∋ Bs) t
   ⟦tweaken⟧ α βs ⟨ B ⟩      As A Bs t a       = a
   ⟦tweaken⟧ α βs (T ∧ U)    As A Bs t (a , b) = (⟦tweaken⟧ α βs T As A Bs t a , ⟦tweaken⟧ α βs U As A Bs t b)
   ⟦tweaken⟧ α βs (T ⇒ U)    As A Bs t f       = λ a → ⟦tweaken⟧ α βs U As A Bs t (f (⟦tweaken⁻¹⟧ α βs T As A Bs t a))
-  ⟦tweaken⟧ α βs (var τ)    As A Bs t a       = ⟦τweaken⟧ α βs τ As A Bs t a
+  ⟦tweaken⟧ α βs (T ⊵ U)    As A Bs t f       = λ v t≤v σ → ⟦tweaken⟧ α βs U As A Bs v (f v t≤v (λ u t≤u u≤v → ⟦tweaken⁻¹⟧ α βs T As A Bs u (σ u t≤u u≤v)))
+  ⟦tweaken⟧ α βs (tvar τ)   As A Bs t a       = ⟦τweaken⟧ α βs τ As A Bs t a
   ⟦tweaken⟧ α βs (univ β T) As A Bs t f       = λ B → ⟦tweaken⟧ α (βs , β) T As A (Bs , B) t (f B)
 
   ⟦tweaken⁻¹⟧ : ∀ {αs} α βs (T : Typ (αs + βs)) As A Bs t → 
-    T⟦ tweaken α βs T ⟧ ((αs , α) ∋ (As , A) ++ βs ∋ Bs) t → T⟦ T ⟧ (αs ∋ As ++ βs ∋ Bs) t
+    T⟦ tweaken α βs T ⟧ ((αs , α) ∋ (As , A) ++ βs ∋ Bs) t →
+    T⟦ T ⟧ (αs ∋ As ++ βs ∋ Bs) t
   ⟦tweaken⁻¹⟧ α βs ⟨ B ⟩      As A Bs t a       = a
   ⟦tweaken⁻¹⟧ α βs (T ∧ U)    As A Bs t (a , b) = (⟦tweaken⁻¹⟧ α βs T As A Bs t a , ⟦tweaken⁻¹⟧ α βs U As A Bs t b)
   ⟦tweaken⁻¹⟧ α βs (T ⇒ U)    As A Bs t f       = λ a → ⟦tweaken⁻¹⟧ α βs U As A Bs t (f (⟦tweaken⟧ α βs T As A Bs t a))
-  ⟦tweaken⁻¹⟧ α βs (var τ)    As A Bs t a       = ⟦τweaken⁻¹⟧ α βs τ As A Bs t a
+  ⟦tweaken⁻¹⟧ α βs (T ⊵ U)    As A Bs t f       = λ v t≤v σ → ⟦tweaken⁻¹⟧ α βs U As A Bs v (f v t≤v (λ u t≤u u≤v → ⟦tweaken⟧ α βs T As A Bs u (σ u t≤u u≤v)))
+  ⟦tweaken⁻¹⟧ α βs (tvar τ)   As A Bs t a       = ⟦τweaken⁻¹⟧ α βs τ As A Bs t a
   ⟦tweaken⁻¹⟧ α βs (univ β T) As A Bs t f       = λ B → ⟦tweaken⁻¹⟧ α (βs , β) T As A (Bs , B) t (f B)
 
 mutual
@@ -230,7 +250,8 @@ mutual
   ⟦tweaken⟧² α βs ⟨ B ⟩      ℜs ℜ ℑs t aℜb         = aℜb
   ⟦tweaken⟧² α βs (T ∧ U)    ℜs ℜ ℑs t (aℜb , cℜd) = (⟦tweaken⟧² α βs T ℜs ℜ ℑs t aℜb , ⟦tweaken⟧² α βs U ℜs ℜ ℑs t cℜd)
   ⟦tweaken⟧² α βs (T ⇒ U)    ℜs ℜ ℑs t fℜg         = λ aℜb → ⟦tweaken⟧² α βs U ℜs ℜ ℑs t (fℜg (⟦tweaken⁻¹⟧² α βs T ℜs ℜ ℑs t aℜb))
-  ⟦tweaken⟧² α βs (var τ)    ℜs ℜ ℑs t aℜb         = ⟦τweaken⟧² α βs τ ℜs ℜ ℑs t aℜb
+  ⟦tweaken⟧² α βs (T ⊵ U)    ℜs ℜ ℑs t fℜg         = λ v t≤v σℜτ → ⟦tweaken⟧² α βs U ℜs ℜ ℑs v (fℜg v t≤v (λ u t≤u u≤v → ⟦tweaken⁻¹⟧² α βs T ℜs ℜ ℑs u (σℜτ u t≤u u≤v)))
+  ⟦tweaken⟧² α βs (tvar τ)   ℜs ℜ ℑs t aℜb         = ⟦τweaken⟧² α βs τ ℜs ℜ ℑs t aℜb
   ⟦tweaken⟧² α βs (univ β T) ℜs ℜ ℑs t fℜg         = λ ℑ → ⟦tweaken⟧² α (βs , β) T ℜs ℜ (ℑs , ℑ) t (fℜg ℑ)
 
   ⟦tweaken⁻¹⟧² : ∀ {αs} α βs (T : Typ (αs + βs)) {As Bs A B Cs Ds} ℜs ℜ ℑs t {a b} →
@@ -239,7 +260,8 @@ mutual
   ⟦tweaken⁻¹⟧² α βs ⟨ B ⟩      ℜs ℜ ℑs t aℜb         = aℜb
   ⟦tweaken⁻¹⟧² α βs (T ∧ U)    ℜs ℜ ℑs t (aℜb , cℜd) = (⟦tweaken⁻¹⟧² α βs T ℜs ℜ ℑs t aℜb , ⟦tweaken⁻¹⟧² α βs U ℜs ℜ ℑs t cℜd)
   ⟦tweaken⁻¹⟧² α βs (T ⇒ U)    ℜs ℜ ℑs t fℜg         = λ aℜb → ⟦tweaken⁻¹⟧² α βs U ℜs ℜ ℑs t (fℜg (⟦tweaken⟧² α βs T ℜs ℜ ℑs t aℜb))
-  ⟦tweaken⁻¹⟧² α βs (var τ)    ℜs ℜ ℑs t aℜb         = ⟦τweaken⁻¹⟧² α βs τ ℜs ℜ ℑs t aℜb
+  ⟦tweaken⁻¹⟧² α βs (T ⊵ U)    ℜs ℜ ℑs t fℜg         = λ v t≤v σℜτ → ⟦tweaken⁻¹⟧² α βs U ℜs ℜ ℑs v (fℜg v t≤v (λ u t≤u u≤v → ⟦tweaken⟧² α βs T ℜs ℜ ℑs u (σℜτ u t≤u u≤v)))
+  ⟦tweaken⁻¹⟧² α βs (tvar τ)   ℜs ℜ ℑs t aℜb         = ⟦τweaken⁻¹⟧² α βs τ ℜs ℜ ℑs t aℜb
   ⟦tweaken⁻¹⟧² α βs (univ β T) ℜs ℜ ℑs t fℜg         = λ ℑ → ⟦tweaken⁻¹⟧² α (βs , β) T ℜs ℜ (ℑs , ℑ) t (fℜg ℑ)
 
 -- Weakening of contexts
@@ -261,8 +283,8 @@ cweaken α (Γ , T at t) = (cweaken α Γ , tweaken α ε T at t)
 
 τsubst : ∀ {αs} (T : Typ αs) βs → TVar ((αs , tlevel T) + βs) → Typ (αs + βs)
 τsubst T ε        zero    = T
-τsubst T ε        (suc τ) = var τ
-τsubst T (βs , β) zero    = var zero
+τsubst T ε        (suc τ) = tvar τ
+τsubst T (βs , β) zero    = tvar zero
 τsubst T (βs , β) (suc τ) = tweaken β ε (τsubst T βs τ)
 
 ⟦τsubst⟧ : ∀ {αs} (T : Typ αs) βs (τ : TVar ((αs , tlevel T) + βs)) As Bs t →
@@ -308,10 +330,11 @@ cweaken α (Γ , T at t) = (cweaken α Γ , tweaken α ε T at t)
 -- Substitution into types
 
 tsubst : ∀ {αs} (T : Typ αs) βs → Typ ((αs , tlevel T) + βs) → Typ (αs + βs)
-tsubst T βs ⟨ A ⟩ = ⟨ A ⟩
-tsubst T βs (U ∧ V) = tsubst T βs U ∧ tsubst T βs V
-tsubst T βs (U ⇒ V) = tsubst T βs U ⇒ tsubst T βs V
-tsubst T βs (var τ) = τsubst T βs τ
+tsubst T βs ⟨ A ⟩      = ⟨ A ⟩
+tsubst T βs (U ∧ V)    = tsubst T βs U ∧ tsubst T βs V
+tsubst T βs (U ⇒ V)    = tsubst T βs U ⇒ tsubst T βs V
+tsubst T βs (U ⊵ V)    = tsubst T βs U ⊵ tsubst T βs V
+tsubst T βs (tvar τ)   = τsubst T βs τ
 tsubst T βs (univ β U) = univ β (tsubst T (βs , β) U)
 
 mutual
@@ -322,7 +345,8 @@ mutual
   ⟦tsubst⟧ T βs ⟨ A ⟩      As Bs t a       = a
   ⟦tsubst⟧ T βs (U ∧ V)    As Bs t (a , b) = (⟦tsubst⟧ T βs U As Bs t a , ⟦tsubst⟧ T βs V As Bs t b)
   ⟦tsubst⟧ T βs (U ⇒ V)    As Bs t f       = λ a → ⟦tsubst⟧ T βs V As Bs t (f (⟦tsubst⁻¹⟧ T βs U As Bs t a))
-  ⟦tsubst⟧ T βs (var τ)    As Bs t a       = ⟦τsubst⟧ T βs τ As Bs t a
+  ⟦tsubst⟧ T βs (U ⊵ V)    As Bs t f       = λ v t≤v σ → ⟦tsubst⟧ T βs V As Bs v (f v t≤v (λ u t≤u u≤v → ⟦tsubst⁻¹⟧ T βs U As Bs u (σ u t≤u u≤v)))
+  ⟦tsubst⟧ T βs (tvar τ)   As Bs t a       = ⟦τsubst⟧ T βs τ As Bs t a
   ⟦tsubst⟧ T βs (univ β U) As Bs t f       = λ B → ⟦tsubst⟧ T (βs , β) U As (Bs , B) t (f B)
 
   ⟦tsubst⁻¹⟧ : ∀ {αs} (T : Typ αs) βs (U : Typ ((αs , tlevel T) + βs)) As Bs t →
@@ -331,7 +355,8 @@ mutual
   ⟦tsubst⁻¹⟧ T βs ⟨ A ⟩      As Bs t a       = a
   ⟦tsubst⁻¹⟧ T βs (U ∧ V)    As Bs t (a , b) = (⟦tsubst⁻¹⟧ T βs U As Bs t a , ⟦tsubst⁻¹⟧ T βs V As Bs t b)
   ⟦tsubst⁻¹⟧ T βs (U ⇒ V)    As Bs t f       = λ a → ⟦tsubst⁻¹⟧ T βs V As Bs t (f (⟦tsubst⟧ T βs U As Bs t a))
-  ⟦tsubst⁻¹⟧ T βs (var τ)    As Bs t a       = ⟦τsubst⁻¹⟧ T βs τ As Bs t a
+  ⟦tsubst⁻¹⟧ T βs (U ⊵ V)    As Bs t f       = λ v t≤v σ → ⟦tsubst⁻¹⟧ T βs V As Bs v (f v t≤v (λ u t≤u u≤v → ⟦tsubst⟧ T βs U As Bs u (σ u t≤u u≤v)))
+  ⟦tsubst⁻¹⟧ T βs (tvar τ)   As Bs t a       = ⟦τsubst⁻¹⟧ T βs τ As Bs t a
   ⟦tsubst⁻¹⟧ T βs (univ β U) As Bs t f       = λ B → ⟦tsubst⁻¹⟧ T (βs , β) U As (Bs , B) t (f B)
 
 mutual
@@ -342,7 +367,8 @@ mutual
   ⟦tsubst⟧² T βs ⟨ A ⟩      ℜs ℑs t aℜb         = aℜb
   ⟦tsubst⟧² T βs (U ∧ V)    ℜs ℑs t (aℜb , cℜd) = (⟦tsubst⟧² T βs U ℜs ℑs t aℜb , ⟦tsubst⟧² T βs V ℜs ℑs t cℜd)
   ⟦tsubst⟧² T βs (U ⇒ V)    ℜs ℑs t fℜg         = λ aℜb → ⟦tsubst⟧² T βs V ℜs ℑs t (fℜg (⟦tsubst⁻¹⟧² T βs U ℜs ℑs t aℜb))
-  ⟦tsubst⟧² T βs (var τ)    ℜs ℑs t aℜb         = ⟦τsubst⟧² T βs τ ℜs ℑs t aℜb
+  ⟦tsubst⟧² T βs (U ⊵ V)    ℜs ℑs t fℜg         = λ v t≤v σℜτ → ⟦tsubst⟧² T βs V ℜs ℑs v (fℜg v t≤v (λ u t≤u u≤v → ⟦tsubst⁻¹⟧² T βs U ℜs ℑs u (σℜτ u t≤u u≤v)))
+  ⟦tsubst⟧² T βs (tvar τ)   ℜs ℑs t aℜb         = ⟦τsubst⟧² T βs τ ℜs ℑs t aℜb
   ⟦tsubst⟧² T βs (univ β U) ℜs ℑs t fℜg         = λ ℑ → ⟦tsubst⟧² T (βs , β) U ℜs (ℑs , ℑ) t (fℜg ℑ)
 
   ⟦tsubst⁻¹⟧² : ∀ {αs} (T : Typ αs) βs (U : Typ ((αs , tlevel T) + βs)) {As Bs Cs Ds} ℜs ℑs t {a b} →
@@ -351,7 +377,8 @@ mutual
   ⟦tsubst⁻¹⟧² T βs ⟨ A ⟩      ℜs ℑs t aℜb         = aℜb
   ⟦tsubst⁻¹⟧² T βs (U ∧ V)    ℜs ℑs t (aℜb , cℜd) = (⟦tsubst⁻¹⟧² T βs U ℜs ℑs t aℜb , ⟦tsubst⁻¹⟧² T βs V ℜs ℑs t cℜd)
   ⟦tsubst⁻¹⟧² T βs (U ⇒ V)    ℜs ℑs t fℜg         = λ aℜb → ⟦tsubst⁻¹⟧² T βs V ℜs ℑs t (fℜg (⟦tsubst⟧² T βs U ℜs ℑs t aℜb))
-  ⟦tsubst⁻¹⟧² T βs (var τ)    ℜs ℑs t aℜb         = ⟦τsubst⁻¹⟧² T βs τ ℜs ℑs t aℜb
+  ⟦tsubst⁻¹⟧² T βs (U ⊵ V)    ℜs ℑs t fℜg         = λ v t≤v σℜτ → ⟦tsubst⁻¹⟧² T βs V ℜs ℑs v (fℜg v t≤v (λ u t≤u u≤v → ⟦tsubst⟧² T βs U ℜs ℑs u (σℜτ u t≤u u≤v)))
+  ⟦tsubst⁻¹⟧² T βs (tvar τ)   ℜs ℑs t aℜb         = ⟦τsubst⁻¹⟧² T βs τ ℜs ℑs t aℜb
   ⟦tsubst⁻¹⟧² T βs (univ β U) ℜs ℑs t fℜg         = λ ℑ → ⟦tsubst⁻¹⟧² T (βs , β) U ℜs (ℑs , ℑ) t (fℜg ℑ)
 
 -- Variables
@@ -410,6 +437,7 @@ e⟦ tapp {t = t} T {U = U} e ⟧² ℜs asℜbs = ⟦tsubst⟧² T ε U ℜs tt
 data STyp : Set₁ where
   ⟨_⟩ : (A : Set) → STyp
   _∧_ _⇒_ : (T : STyp) → (U : STyp) → STyp
+  □ : (T : STyp) → STyp
 
 -- Translation of surface level types into types
 
@@ -417,36 +445,41 @@ data STyp : Set₁ where
 ⟪ ⟨ A ⟩ ⟫ = ⟨ A ⟩
 ⟪ T ∧ U ⟫ = ⟪ T ⟫ ∧ ⟪ U ⟫
 ⟪ T ⇒ U ⟫ = ⟪ T ⟫ ⇒ ⟪ U ⟫
+⟪ □ T ⟫   = tvar zero ⊵ ⟪ T ⟫
 
 T⟪_⟫ : STyp → RSet₀
 T⟪ ⟨ A ⟩ ⟫ t = A
 T⟪ T ∧ U ⟫ t = T⟪ T ⟫ t × T⟪ U ⟫ t
 T⟪ T ⇒ U ⟫ t = T⟪ T ⟫ t → T⟪ U ⟫ t
+T⟪ □ T ⟫   t = ∀ u → True (t ≤ u) → T⟪ T ⟫ u
 
 World : RSet₀
 World t = ⊤
 
 mutual
 
-  trans : ∀ T {s} → T⟪ T ⟫ s → T⟦ ⟪ T ⟫ ⟧ (tt , World) s
+  trans : ∀ T {t} → T⟪ T ⟫ t → T⟦ ⟪ T ⟫ ⟧ (tt , World) t
   trans ⟨ A ⟩   a       = a
   trans (T ∧ U) (a , b) = (trans T a , trans U b)
   trans (T ⇒ U) f       = λ a → trans U (f (trans⁻¹ T a))
+  trans (□ T)   σ       = λ u t≤u τ → trans T (σ u t≤u)
 
-  trans⁻¹ : ∀ T {s} → T⟦ ⟪ T ⟫ ⟧ (tt , World) s → T⟪ T ⟫ s
+  trans⁻¹ : ∀ T {t} → T⟦ ⟪ T ⟫ ⟧ (tt , World) t → T⟪ T ⟫ t
   trans⁻¹ ⟨ A ⟩   a       = a
   trans⁻¹ (T ∧ U) (a , b) = (trans⁻¹ T a , trans⁻¹ U b)
   trans⁻¹ (T ⇒ U) f       = λ a → trans⁻¹ U (f (trans T a))
+  trans⁻¹ (□ T)   σ       = λ u t≤u → trans⁻¹ T (σ u t≤u _)
 
 -- Causality
 
-_at_∋_≈[_∵_]_ : ∀ T s → T⟪ T ⟫ s → ∀ u → True (s ≤ u) → T⟪ T ⟫ s → Set
-⟨ A ⟩   at s ∋ a       ≈[ u ∵ s≤u ] b       = a ≡ b
-(T ∧ U) at s ∋ (a , b) ≈[ u ∵ s≤u ] (c , d) = (T at s ∋ a ≈[ u ∵ s≤u ] c) × (U at s ∋ b ≈[ u ∵ s≤u ] d)
-(T ⇒ U) at s ∋ f       ≈[ u ∵ s≤u ] g       = ∀ {a b} → (T at s ∋ a ≈[ u ∵ s≤u ] b) → (U at s ∋ f a ≈[ u ∵ s≤u ] g b)
+_at_∋_≈[_∵_]_ : ∀ T t → T⟪ T ⟫ t → ∀ u → True (t ≤ u) → T⟪ T ⟫ t → Set
+⟨ A ⟩   at t ∋ a       ≈[ u ∵ t≤u ] b       = a ≡ b
+(T ∧ U) at t ∋ (a , b) ≈[ u ∵ t≤u ] (c , d) = (T at t ∋ a ≈[ u ∵ t≤u ] c) × (U at t ∋ b ≈[ u ∵ t≤u ] d)
+(T ⇒ U) at t ∋ f       ≈[ u ∵ t≤u ] g       = ∀ {a b} → (T at t ∋ a ≈[ u ∵ t≤u ] b) → (U at t ∋ f a ≈[ u ∵ t≤u ] g b)
+(□ T)   at s ∋ σ       ≈[ u ∵ s≤u ] τ       = ∀ t s≤t t≤u → (T at t ∋ σ t s≤t ≈[ u ∵ t≤u ] τ t s≤t)
 
-Causal : ∀ T U s → T⟪ T ⇒ U ⟫ s → Set
-Causal T U s f = ∀ u s≤u {a b} → (T at s ∋ a ≈[ u ∵ s≤u ] b) → (U at s ∋ f a ≈[ u ∵ s≤u ] f b)
+Causal : ∀ T U t → T⟪ T ⇒ U ⟫ t → Set
+Causal T U t f = ∀ u t≤u {a b} → (T at t ∋ a ≈[ u ∵ t≤u ] b) → (U at t ∋ f a ≈[ u ∵ t≤u ] f b)
 
 -- Parametricity implies causality
 
@@ -455,24 +488,26 @@ Causal T U s f = ∀ u s≤u {a b} → (T at s ∋ a ≈[ u ∵ s≤u ] b) → (
 
 mutual
 
-  ℜ-impl-≈ : ∀ T s u s≤u {a b} →
-    T⟦ ⟪ T ⟫ ⟧² (tt , ℜ[ u ]) s a b →
-    (T at s ∋ trans⁻¹ T a ≈[ u ∵ s≤u ] trans⁻¹ T b)
-  ℜ-impl-≈ ⟨ A ⟩   s u s≤u aℜb         = aℜb
-  ℜ-impl-≈ (T ∧ U) s u s≤u (aℜc , bℜd) = (ℜ-impl-≈ T s u s≤u aℜc , ℜ-impl-≈ U s u s≤u bℜd)
-  ℜ-impl-≈ (T ⇒ U) s u s≤u fℜg         = λ a≈b → ℜ-impl-≈ U s u s≤u (fℜg (≈-impl-ℜ T s u s≤u a≈b))
+  ℜ-impl-≈ : ∀ T t u t≤u {a b} →
+    T⟦ ⟪ T ⟫ ⟧² (tt , ℜ[ u ]) t a b →
+    (T at t ∋ trans⁻¹ T a ≈[ u ∵ t≤u ] trans⁻¹ T b)
+  ℜ-impl-≈ ⟨ A ⟩   t u t≤u aℜb         = aℜb
+  ℜ-impl-≈ (T ∧ U) t u t≤u (aℜc , bℜd) = (ℜ-impl-≈ T t u t≤u aℜc , ℜ-impl-≈ U t u t≤u bℜd)
+  ℜ-impl-≈ (T ⇒ U) t u t≤u fℜg         = λ a≈b → ℜ-impl-≈ U t u t≤u (fℜg (≈-impl-ℜ T t u t≤u a≈b))
+  ℜ-impl-≈ (□ T)   s v s≤v σℜτ         = λ u s≤u u≤v → ℜ-impl-≈ T u v u≤v (σℜτ u s≤u (λ t s≤t t≤u → ≤-trans t u v t≤u u≤v))
 
-  ≈-impl-ℜ : ∀ T s u s≤u {a b} →
-    (T at s ∋ a ≈[ u ∵ s≤u ] b) →
-    T⟦ ⟪ T ⟫ ⟧² (tt , ℜ[ u ]) s (trans T a) (trans T b)
-  ≈-impl-ℜ ⟨ A ⟩   s u s≤u a≈b         = a≈b
-  ≈-impl-ℜ (T ∧ U) s u s≤u (a≈c , b≈d) = (≈-impl-ℜ T s u s≤u a≈c , ≈-impl-ℜ U s u s≤u b≈d)
-  ≈-impl-ℜ (T ⇒ U) s u s≤u f≈g         = λ aℜb → ≈-impl-ℜ U s u s≤u (f≈g (ℜ-impl-≈ T s u s≤u aℜb))
+  ≈-impl-ℜ : ∀ T t u t≤u {a b} →
+    (T at t ∋ a ≈[ u ∵ t≤u ] b) →
+    T⟦ ⟪ T ⟫ ⟧² (tt , ℜ[ u ]) t (trans T a) (trans T b)
+  ≈-impl-ℜ ⟨ A ⟩   t u t≤u a≈b         = a≈b
+  ≈-impl-ℜ (T ∧ U) t u t≤u (a≈c , b≈d) = (≈-impl-ℜ T t u t≤u a≈c , ≈-impl-ℜ U t u t≤u b≈d)
+  ≈-impl-ℜ (T ⇒ U) t u t≤u f≈g         = λ aℜb → ≈-impl-ℜ U t u t≤u (f≈g (ℜ-impl-≈ T t u t≤u aℜb))
+  ≈-impl-ℜ (□ T)   s v s≤v σ≈τ         = λ u s≤u ρ → ≈-impl-ℜ T u v (ρ u s≤u (≤-refl u)) (σ≈τ u s≤u (ρ u s≤u (≤-refl u)))
 
 -- Every expression is causal
 
 e⟪_at_∋_⟫ : ∀ T t → Exp ε ⟪ T ⟫ t → T⟪ T ⟫ t
 e⟪ T at t ∋ e ⟫ = trans⁻¹ T (e⟦ e ⟧ (tt , World) tt)
 
-causality : ∀ T U s f → Causal T U s e⟪ (T ⇒ U) at s ∋ f ⟫ 
-causality T U s f u s≤u = ℜ-impl-≈ (T ⇒ U) s u s≤u (e⟦ f ⟧² (tt , ℜ[ u ]) tt)
+causality : ∀ T U t f → Causal T U t e⟪ (T ⇒ U) at t ∋ f ⟫ 
+causality T U t f u t≤u = ℜ-impl-≈ (T ⇒ U) t u t≤u (e⟦ f ⟧² (tt , ℜ[ u ]) tt)
