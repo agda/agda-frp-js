@@ -25,7 +25,7 @@ open Seq public using () renaming (as to ⟨_⟩ )
 -- Empty list
 
 ∅ : ∀ {A} → Seq A
-∅ = [ [] ]
+∅ = seq [] id refl
 
 -- Concatenation
 
@@ -39,7 +39,7 @@ _+_ : ∀ {A} → Seq A → Seq A → Seq A
 -- Cons
 
 _◁_ : ∀ {A} → A → Seq A → Seq A
-a ◁ as = [ a ∷ [] ] + as
+a ◁ (seq as f f✓) = seq (a ∷ as) ((_∷_ a) ∘ f) (cong (_∘_ (_∷_ a)) f✓)
 
 -- Case analysis
 
@@ -50,26 +50,26 @@ a ◁ as = [ a ∷ [] ] + as
 -- Note that this uses ≡-relevant, which in turn uses trustMe,
 -- which does not reduce to refl.
 
-data Case+ {A : Set} : Seq A → Set where
-  [] : Case+ ∅
-  _∷_ : ∀ a as → Case+ (a ◁ as)
-
-case+ : ∀ {A} (as : Seq A) → Case+ as
-case+ (seq as       f  f✓) with ≡-relevant f✓
-case+ (seq []       ._ f✓) | refl = []
-case+ (seq (a ∷ as) ._ f✓) | refl = a ∷ (seq as (_++_ as) refl)
-
--- Then the weaker one
--- No use of ≡-relevant, so it reduces, but it doesn't give very strong
--- guarantees.
-
 data Case {A : Set} : Seq A → Set where
-  [] : ∀ {f} .{f✓} → Case (seq [] f f✓)
-  _∷_ : ∀ a as {f} .{f✓} → Case (seq (a ∷ ⟨ as ⟩) f f✓)
+  [] : Case ∅
+  _∷_ : ∀ a as → Case (a ◁ as)
 
 case : ∀ {A} (as : Seq A) → Case as
-case (seq []       f f✓) = [] {f = f} {f✓ = f✓}
-case (seq (a ∷ as) f f✓) = _∷_ a [ as ] {f} {f✓}
+case (seq as       f  f✓) with ≡-relevant f✓
+case (seq []       ._ f✓) | refl = []
+case (seq (a ∷ as) ._ f✓) | refl = a ∷ (seq as (_++_ as) refl)
+
+-- -- Then the weaker one
+-- -- No use of ≡-relevant, so it reduces, but it doesn't give very strong
+-- -- guarantees.
+
+-- data Case {A : Set} : Seq A → Set where
+--   [] : ∀ {f} .{f✓} → Case (seq [] f f✓)
+--   _∷_ : ∀ a as {f} .{f✓} → Case (seq (a ∷ ⟨ as ⟩) f f✓)
+
+-- case : ∀ {A} (as : Seq A) → Case as
+-- case (seq []       f f✓) = [] {f = f} {f✓ = f✓}
+-- case (seq (a ∷ as) f f✓) = _∷_ a [ as ] {f} {f✓}
 
 -- Case supports inductive definitions, for example:
 
@@ -77,6 +77,13 @@ ids : ∀ {A} → Seq A → Seq A
 ids as with case as
 ids ._ | a ∷ as = a ◁ ids as
 ids ._ | []     = ∅
+
+-- and inductive definitions where Seq appears in the type, for example:
+
+ids✓ : ∀ {A} (as : Seq A) → (ids as ≡ as)
+ids✓ as with case as
+ids✓ ._ | a ∷ as = cong (_◁_ a) (ids✓ as)
+ids✓ ._ | []     = refl
 
 -- Ismorphism between Seq and List which respects +
 
@@ -91,13 +98,13 @@ iso-resp-+ : ∀ {A} (as bs : Seq A) → (⟨ as + bs ⟩) ≡ (⟨ as ⟩ ++ �
 iso-resp-+ (seq as f  f✓) (seq bs g g✓) with ≡-relevant f✓
 iso-resp-+ (seq as ._ f✓) (seq bs g g✓) | refl = refl
 
--- Left unit and associtivity are true up to beta-reduction
-
-+-unit₁ : ∀ {A} (as : Seq A) → ((∅ + as) ≡ as)
-+-unit₁ as = refl
+-- Associtivity and left unit are true up to beta-reduction
 
 +-assoc : ∀ {A} (as bs cs : Seq A) → ((as + bs) + cs) ≡ (as + (bs + cs))
 +-assoc as bs cs = refl
+
++-unit₁ : ∀ {A} (as : Seq A) → ((∅ + as) ≡ as)
++-unit₁ as = refl
 
 -- Right unit is only true up to propositional equality
 
