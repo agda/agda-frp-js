@@ -1,5 +1,6 @@
 open import FRP.JS.Nat using ( ℕ ; zero ; suc )
 open import FRP.JS.Bool using ( Bool ; true ; false ; _∧_ )
+open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
 
 module FRP.JS.List where
 
@@ -40,12 +41,16 @@ buildAppend as f (suc n) = buildAppend (f n ∷ as) f n
 build : ∀ {α} {A : Set α} → (ℕ → A) → ℕ → List A
 build = buildAppend []
 
-length : ∀ {α} {A : Set α} → List A → ℕ
-length = foldl (λ n a → suc n) zero
+len : ∀ {α} {A : Set α} → List A → ℕ
+len = foldr (λ a n → suc n) zero
+
+lookup : ∀ {α} {A : Set α} → List A → ℕ → Maybe A
+lookup []       x       = nothing
+lookup (a ∷ as) zero    = just a
+lookup (a ∷ as) (suc n) = lookup as n
 
 _≟[_]_ : ∀ {α β} {A : Set α} {B : Set β} → List A → (A → B → Bool) → List B → Bool
 []       ≟[ p ] []       = true
 (a ∷ as) ≟[ p ] (b ∷ bs) = (p a b) ∧ (as ≟[ p ] bs)
 _        ≟[ p ] _        = false
-
 

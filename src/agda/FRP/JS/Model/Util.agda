@@ -2,6 +2,9 @@ open import FRP.JS.Level using ( _⊔_ )
 
 module FRP.JS.Model.Util where
 
+infixr 5 _,_
+infixr 4 _∘_
+
 id : ∀ {A : Set} → A → A
 id a = a
 
@@ -33,21 +36,25 @@ trans :  ∀ {α} {A : Set α} {a b c : A} →
   (a ≡ b) → (b ≡ c) → (a ≡ c)
 trans refl refl = refl
 
+subst :  ∀ {α β} {A : Set α} (B : A → Set β) {a b} →
+  (a ≡ b) → B a → B b
+subst B refl b = b
+
+subst₂ :  ∀ {α β γ} {A : Set α} {B : Set β} (C : A → B → Set γ) {a b c d} →
+  (a ≡ b) → (c ≡ d) → C a c → C b d
+subst₂ C refl refl c = c
+
 cong : ∀ {α β} {A : Set α} {B : Set β} (f : A → B) {a b} →
   (a ≡ b) → (f a ≡ f b)
 cong f refl = refl
 
 cong₂ : ∀ {α β γ} {A : Set α} {B : Set β} {C : Set γ} (f : A → B → C) {a b c d} →
-  (a ≡ b) → (c ≡ d) → (f a c ≡ f b d)
+  (a≡b : a ≡ b) → (c ≡ d) → (f a c ≡ f b d)
 cong₂ f refl refl = refl
 
-subst :  ∀ {α β} {A : Set α} (B : A → Set β) {a b} →
-  (a ≡ b) → B a → B b
-subst B refl b = b
-
-subst₂ :  ∀ {α β γ} {A : Set α} {B : A → Set β} (C : ∀ a → B a → Set γ) {a b c d} →
-  (a≡b : a ≡ b) → (subst B a≡b c ≡ d) → C a c → C b d
-subst₂ C refl refl c = c
+δcong₂ : ∀ {α β γ} {A : Set α} {B : A → Set β} {C : Set γ} (f : ∀ a → B a → C) {a b c d} →
+  (a≡b : a ≡ b) → (subst B a≡b c ≡ d) → (f a c ≡ f b d)
+δcong₂ f refl refl = refl
 
 private
   primitive
@@ -55,3 +62,22 @@ private
 
 ≡-relevant : ∀ {α} {A : Set α} {a b : A} → .(a ≡ b) → (a ≡ b)
 ≡-relevant a≡b = primTrustMe
+
+-- Equational reasoning, specialized to ≡
+
+infix  4 _IsRelatedTo_
+infix  2 _∎
+infixr 2 _≡⟨_⟩_
+infix  1 begin_
+
+data _IsRelatedTo_ {α} {A : Set α} (a b  : A) : Set α where
+  relTo : (a≡b : a ≡ b) → a IsRelatedTo b
+
+begin_ : ∀ {α} {A : Set α} {a b : A} → a IsRelatedTo b → a ≡ b
+begin relTo a≡b = a≡b
+
+_≡⟨_⟩_ : ∀ {α} {A : Set α} a {b c : A} → a ≡ b → b IsRelatedTo c → a IsRelatedTo c
+_ ≡⟨ a≡b ⟩ relTo b≡c = relTo (trans a≡b b≡c)
+
+_∎ : ∀ {α} {A : Set α} (a : A) → a IsRelatedTo a
+_∎ _ = relTo refl

@@ -3,9 +3,7 @@ open import FRP.JS.Model.Util using ( _≡_ ; refl ; sym ; trans ; subst ; cong 
 module FRP.JS.Model.List where
 
 infixr 4 _++_
-
-postulate
-  ≡-irrel : ∀ {A : Set} {a b : A} → .(a ≡ b) → (a ≡ b)
+infix 2 _∈_
 
 data List (A : Set) : Set where
   [] : List A

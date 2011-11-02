@@ -6,11 +6,10 @@ module FRP.JS.Model.STLambdaC.NF
   (Const : FRP.JS.Model.STLambdaC.Typ.Typ TConst → Set) where
 
 open module Typ = FRP.JS.Model.STLambdaC.Typ TConst using 
-  ( Typ ; Ctxt ; const ; _⇝_ ; [] ; _∷_ ; ⟨_⟩ ; ∅ ; _◁_ ; _+_ )
+  ( Typ ; Ctxt ; const ; _⇝_ ; [_] ; [] ; _∷_ ; _++_ ; case )
 
 open module Exp = FRP.JS.Model.STLambdaC.Exp TConst Const using 
-  ( Var ; Exp ; zero ; suc ; var ; const ; abs ; app 
-  ; xweaken+ ; weaken+ ; weaken* )
+  ( Exp ; const ; abs ; app ; var ; weaken+ ; weaken* ; xweaken+ )
 
 mutual
 
@@ -23,7 +22,7 @@ mutual
 
   data NF {Γ : Ctxt} : ∀ {T} → Exp Γ T → Set where
     atom : ∀ {C} {M : Exp Γ (const C)} → Atom M → NF M
-    abs : ∀ T {U} {M : Exp (T ∷ Γ) U} → NF M → NF (abs T M)
+    abs : ∀ T {U} {M : Exp (T ∷ Γ) U} → NF M → NF (abs {Γ} T M)
 
 -- Weakening
 
@@ -31,13 +30,13 @@ mutual
 
   aweaken+ : ∀ B Γ Δ {T M} → Atom M → Atom (weaken+ B Γ Δ {T} M)
   aweaken+ B Γ Δ (const c) = const c
-  aweaken+ B Γ Δ (var x)   = var (xweaken+ B Γ Δ x)
   aweaken+ B Γ Δ (app M N) = app (aweaken+ B Γ Δ M) (nweaken+ B Γ Δ N)
+  aweaken+ B Γ Δ (var x)   = var (xweaken+ B Γ Δ (case B Δ x))
 
   nweaken+ : ∀ B Γ Δ {T M} → NF M → NF (weaken+ B Γ Δ {T} M)
   nweaken+ B Γ Δ (atom N)   = atom (aweaken+ B Γ Δ N)
-  nweaken+ B Γ Δ (abs T N)  = abs T (nweaken+ (T ◁ B) Γ Δ N)
+  nweaken+ B Γ Δ (abs T N)  = abs T (nweaken+ (T ∷ B) Γ Δ N)
 
 aweaken* : ∀ Γ Δ {T M} → Atom M → Atom (weaken* Γ Δ {T} M)
-aweaken* = aweaken+ ∅
+aweaken* = aweaken+ []
 
