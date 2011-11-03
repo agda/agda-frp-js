@@ -2,7 +2,7 @@ open import FRP.JS.Model.Util using
   ( _≡_ ; refl ; sym ; subst ; cong ; cong₂ ; begin_ ; _≡⟨_⟩_ ; _∎ ; ≡-relevant
   ; id ; _∘_  )
 open import FRP.JS.List using () renaming
-  ( List to ♭List ; [] to []♭ ; _∷_ to _∷♭_ ; _++_ to _++♭_ ; lookup to lookup♭ ; len to len♭ )
+  ( List to ♭List ; [] to []♭ ; _∷_ to _∷♭_ ; _++_ to _++♭_ ; lookup to lookup♭ ; length to length♭ )
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
 open import FRP.JS.Nat using ( zero ; suc ) renaming ( _+_ to _+♭_ )
 open import FRP.JS.Model.DNat using ( ℕ ; ♯0 ; _+_ ; iso-resp-+ ) renaming 
@@ -27,15 +27,15 @@ cat-unit (a ∷♭ as) = cong (_∷♭_ a) (cat-unit as)
 
 -- List A is isomorphic to ♭List A, but has associativity of concatenation
 -- up to beta reduction, not just up to propositional equality.
--- We keep track of the length explicitly to ensure that len is a monoid
+-- We keep track of the length explicitly to ensure that length is a monoid
 -- homomorphism up to beta-reduction, not just up to ≡.
 
 record List (A : Set) : Set where
   constructor list
   field
-    len : ℕ
+    length : ℕ
     fun : ♭List A → ♭List A
-    .len✓ : len ≡ ♯ⁿ (len♭ (fun []♭))
+    .length✓ : length ≡ ♯ⁿ (length♭ (fun []♭))
     .fun✓ : fun ≡ cat (fun []♭)
 
 open List public
@@ -44,9 +44,9 @@ open List public
 
 ♯ : ∀ {A} → ♭List A → List A
 ♯ as = list 
-  (♯ⁿ (len♭ as)) 
+  (♯ⁿ (length♭ as)) 
   (cat as) 
-  (cong (♯ⁿ ∘ len♭) (sym (cat-unit as)))
+  (cong (♯ⁿ ∘ length♭) (sym (cat-unit as)))
   (cong cat (sym (cat-unit as)))
 
 ♭ : ∀ {A} → List A → ♭List A
@@ -64,27 +64,27 @@ open List public
 
 -- Concatenation
 
-len♭-resp-++ : ∀ {A : Set} (as bs : ♭List A) → len♭ (as ++♭ bs) ≡ (len♭ as +♭ len♭ bs)
-len♭-resp-++ []♭       bs = refl
-len♭-resp-++ (a ∷♭ as) bs = cong (_+♭_ 1) (len♭-resp-++ as bs)
+length♭-resp-++ : ∀ {A : Set} (as bs : ♭List A) → length♭ (as ++♭ bs) ≡ (length♭ as +♭ length♭ bs)
+length♭-resp-++ []♭       bs = refl
+length♭-resp-++ (a ∷♭ as) bs = cong (_+♭_ 1) (length♭-resp-++ as bs)
 
 _++_ : ∀ {A} → List A → List A → List A
 list m f m✓ f✓ ++ list n g n✓ g✓ = list (m + n) (f ∘ g) m+n✓ f∘g✓ where
-  .m+n✓ : (m + n) ≡ ♯ⁿ (len♭ (f (g []♭)))
+  .m+n✓ : (m + n) ≡ ♯ⁿ (length♭ (f (g []♭)))
   m+n✓ = begin
       m + n
     ≡⟨ cong₂ _+_ m✓ n✓ ⟩
-      ♯ⁿ (len♭ (f []♭)) + ♯ⁿ (len♭ (g []♭))
-    ≡⟨ sym (isoⁿ (♯ⁿ (len♭ (f []♭)) + ♯ⁿ (len♭ (g []♭)))) ⟩
-      ♯ⁿ (♭ⁿ (♯ⁿ (len♭ (f []♭)) + ♯ⁿ (len♭ (g []♭))))
-    ≡⟨ cong ♯ⁿ (iso-resp-+ (♯ⁿ (len♭ (f []♭))) (♯ⁿ (len♭ (g []♭)))) ⟩
-      ♯ⁿ (♭ⁿ (♯ⁿ (len♭ (f []♭))) +♭ ♭ⁿ (♯ⁿ (len♭ (g []♭))))
-    ≡⟨ cong ♯ⁿ (cong₂ _+♭_ (isoⁿ⁻¹ (len♭ (f []♭))) (isoⁿ⁻¹ (len♭ (g []♭)))) ⟩
-      ♯ⁿ (len♭ (f []♭) +♭ len♭ (g []♭))
-    ≡⟨ cong ♯ⁿ (sym (len♭-resp-++ (f []♭) (g []♭))) ⟩
-      ♯ⁿ (len♭ (f []♭ ++♭ g []♭))
-    ≡⟨ cong (λ X → ♯ⁿ (len♭ (X (g []♭)))) (sym f✓) ⟩
-      ♯ⁿ (len♭ (f (g []♭)))
+      ♯ⁿ (length♭ (f []♭)) + ♯ⁿ (length♭ (g []♭))
+    ≡⟨ sym (isoⁿ (♯ⁿ (length♭ (f []♭)) + ♯ⁿ (length♭ (g []♭)))) ⟩
+      ♯ⁿ (♭ⁿ (♯ⁿ (length♭ (f []♭)) + ♯ⁿ (length♭ (g []♭))))
+    ≡⟨ cong ♯ⁿ (iso-resp-+ (♯ⁿ (length♭ (f []♭))) (♯ⁿ (length♭ (g []♭)))) ⟩
+      ♯ⁿ (♭ⁿ (♯ⁿ (length♭ (f []♭))) +♭ ♭ⁿ (♯ⁿ (length♭ (g []♭))))
+    ≡⟨ cong ♯ⁿ (cong₂ _+♭_ (isoⁿ⁻¹ (length♭ (f []♭))) (isoⁿ⁻¹ (length♭ (g []♭)))) ⟩
+      ♯ⁿ (length♭ (f []♭) +♭ length♭ (g []♭))
+    ≡⟨ cong ♯ⁿ (sym (length♭-resp-++ (f []♭) (g []♭))) ⟩
+      ♯ⁿ (length♭ (f []♭ ++♭ g []♭))
+    ≡⟨ cong (λ X → ♯ⁿ (length♭ (X (g []♭)))) (sym f✓) ⟩
+      ♯ⁿ (length♭ (f (g []♭)))
     ∎
   .f∘g✓ : (f ∘ g) ≡ cat (f (g []♭))
   f∘g✓ = begin
@@ -102,13 +102,13 @@ list m f m✓ f✓ ++ list n g n✓ g✓ = list (m + n) (f ∘ g) m+n✓ f∘g�
 _∷_ : ∀ {A} → A → List A → List A
 a ∷ as = [ a ] ++ as
 
--- Ismorphism between List and ♭List which respects ++ and len
+-- Ismorphism between List and ♭List which respects ++ and length
 
-inject : ∀ {A} (as bs : List A) → (len as ≡ len bs) → (fun as ≡ fun bs) → (as ≡ bs)
+inject : ∀ {A} (as bs : List A) → (length as ≡ length bs) → (fun as ≡ fun bs) → (as ≡ bs)
 inject (list m f m✓ f✓) (list .m .f n✓ g✓) refl refl = refl
 
 iso : ∀ {A} (as : List A) → ♯ (♭ as) ≡ as
-iso as = inject (♯ (♭ as)) as (sym (≡-relevant (len✓ as))) (sym (≡-relevant (fun✓ as))) 
+iso as = inject (♯ (♭ as)) as (sym (≡-relevant (length✓ as))) (sym (≡-relevant (fun✓ as))) 
 
 iso⁻¹ : ∀ {A} (as : ♭List A) → ♭ (♯ as) ≡ as
 iso⁻¹ = cat-unit
@@ -116,14 +116,14 @@ iso⁻¹ = cat-unit
 iso-resp-++ : ∀ {A} (as bs : List A) → ♭ (as ++ bs) ≡ (♭ as ++♭ ♭ bs)
 iso-resp-++ (list m f m✓ f✓) (list n g n✓ g✓) = cong (λ X → X (g []♭)) (≡-relevant f✓)
 
-iso-resp-len : ∀ {A} (as : List A) → ♭ⁿ (len as) ≡ len♭ (♭ as)
-iso-resp-len as = 
+iso-resp-length : ∀ {A} (as : List A) → ♭ⁿ (length as) ≡ length♭ (♭ as)
+iso-resp-length as = 
   begin
-    ♭ⁿ (len as)
-  ≡⟨ cong (♭ⁿ ∘ len) (sym (iso as)) ⟩
-    ♭ⁿ (♯ⁿ (len♭ (♭ as))) 
-  ≡⟨ isoⁿ⁻¹ (len♭ (♭ as)) ⟩
-    len♭ (♭ as)
+    ♭ⁿ (length as)
+  ≡⟨ cong (♭ⁿ ∘ length) (sym (iso as)) ⟩
+    ♭ⁿ (♯ⁿ (length♭ (♭ as))) 
+  ≡⟨ isoⁿ⁻¹ (length♭ (♭ as)) ⟩
+    length♭ (♭ as)
   ∎
 
 -- Associtivity and units on the nose
@@ -137,13 +137,13 @@ iso-resp-len as =
 ++-unit₂ : ∀ {A} (as : List A) → ((as ++ []) ≡ as)
 ++-unit₂ as = refl
 
--- Len is a monoid homomorphism on the nose
+-- Length is a monoid homomorphism on the nose
 
-len-resp-++ : ∀ {A} (as bs : List A) → (len (as ++ bs) ≡ (len as + len bs))
-len-resp-++ as bs = refl
+length-resp-++ : ∀ {A} (as bs : List A) → (length (as ++ bs) ≡ (length as + length bs))
+length-resp-++ as bs = refl
 
-len-resp-[] : ∀ {A} → (len {A} [] ≡ ♯0)
-len-resp-[] = refl
+length-resp-[] : ∀ {A} → (length {A} [] ≡ ♯0)
+length-resp-[] = refl
 
 -- Lookup
 
@@ -157,7 +157,7 @@ lookup♭₁ (a ∷♭ as) bs zero    refl    = refl
 lookup♭₁ (a ∷♭ as) bs (suc n) as[n]≡a = lookup♭₁ as bs n as[n]≡a
 
 lookup♭₂ : ∀ {A : Set} {a : A} as bs n → 
-  (lookup♭ bs n ≡ just a) → (lookup♭ (as ++♭ bs) (len♭ as +♭ n) ≡ just a)
+  (lookup♭ bs n ≡ just a) → (lookup♭ (as ++♭ bs) (length♭ as +♭ n) ≡ just a)
 lookup♭₂ []♭       bs n bs[n]≡a = bs[n]≡a
 lookup♭₂ (a ∷♭ as) bs n bs[n]≡a = lookup♭₂ as bs n bs[n]≡a
 
@@ -173,14 +173,14 @@ lookup₁ {A} {a} as bs n as[n]≡a =
   ∎
 
 lookup₂ : ∀ {A} {a : A} as bs n → 
-  (lookup bs n ≡ just a) → (lookup (as ++ bs) (len as + n) ≡ just a)
+  (lookup bs n ≡ just a) → (lookup (as ++ bs) (length as + n) ≡ just a)
 lookup₂ {A} {a} as bs n bs[n]≡a =
   begin
-    lookup♭ (♭ (as ++ bs)) (♭ⁿ (len as + n))
-  ≡⟨ cong₂ lookup♭ (iso-resp-++ as bs) (iso-resp-+ (len as) n) ⟩
-    lookup♭ (♭ as ++♭ ♭ bs) (♭ⁿ (len as) +♭ ♭ⁿ n)
-  ≡⟨ cong (λ X → lookup♭ (♭ as ++♭ ♭ bs) (X +♭ ♭ⁿ n)) (iso-resp-len as) ⟩
-    lookup♭ (♭ as ++♭ ♭ bs) (len♭ (♭ as) +♭ ♭ⁿ n)
+    lookup♭ (♭ (as ++ bs)) (♭ⁿ (length as + n))
+  ≡⟨ cong₂ lookup♭ (iso-resp-++ as bs) (iso-resp-+ (length as) n) ⟩
+    lookup♭ (♭ as ++♭ ♭ bs) (♭ⁿ (length as) +♭ ♭ⁿ n)
+  ≡⟨ cong (λ X → lookup♭ (♭ as ++♭ ♭ bs) (X +♭ ♭ⁿ n)) (iso-resp-length as) ⟩
+    lookup♭ (♭ as ++♭ ♭ bs) (length♭ (♭ as) +♭ ♭ⁿ n)
   ≡⟨ lookup♭₂ (♭ as) (♭ bs) (♭ⁿ n) bs[n]≡a ⟩
     just a
   ∎
@@ -201,7 +201,7 @@ _≪_ : ∀ {A} {a : A} {as} → (a ∈ as) → ∀ bs → (a ∈ (as ++ bs))
 _≪_ {A} {a} {as} (n , n✓) bs = (n , lookup₁ as bs n n✓)
 
 _≫_ : ∀ {A} {a : A} as {bs} → (a ∈ bs) → (a ∈ (as ++ bs))
-_≫_ as {bs} (n , n✓) = ((len as + n) , lookup₂ as bs n n✓)
+_≫_ as {bs} (n , n✓) = ((length as + n) , lookup₂ as bs n n✓)
 
 -- Membership extensions have units
 
@@ -234,7 +234,7 @@ _≫_ as {bs} (n , n✓) = ((len as + n) , lookup₂ as bs n n✓)
 ≪-index as bs a∈as = refl
 
 ≫-index : ∀ {A} {a : A} as bs (a∈bs : a ∈ bs) →
-  index (as ≫ a∈bs) ≡ (len as + index a∈bs)
+  index (as ≫ a∈bs) ≡ (length as + index a∈bs)
 ≫-index as bs a∈bs = refl
 
 -- Index is injective
@@ -304,20 +304,20 @@ case-≪ {A} {a} {as} (n , n✓) bs =
 -- Beta for case with ≫
 
 lookup♭-case-≫ : ∀ {A} {a : A} cs ds n₁ n₂ .n✓₁ .n✓₂ → (n₂ ≡ n₁) →
-  lookup♭-case {A} {a} cs ds (len♭ cs +♭ n₂) n✓₂ ≡ inj₂ (♯ⁿ n₁ , n✓₁)
+  lookup♭-case {A} {a} cs ds (length♭ cs +♭ n₂) n✓₂ ≡ inj₂ (♯ⁿ n₁ , n✓₁)
 lookup♭-case-≫ []♭       ds n .n n✓₁ n✓₂ refl = refl
 lookup♭-case-≫ (c ∷♭ cs) ds n .n n✓₁ n✓₂ refl = cong (_⋙_ [ c ]) (lookup♭-case-≫ cs ds n n n✓₁ n✓₂ refl)
   
 lookup-case-≫ : ∀ {A} {a : A} {as bs m l+m} cs ds n .m✓₁ .m✓₂ cs≡as ds≡bs l+n≡l+m → (♯ⁿ n ≡ m) → 
-    lookup-case {A} {a} {as} {bs} {l+m} cs ds (♭ⁿ (len as + m)) m✓₂ cs≡as ds≡bs l+n≡l+m
+    lookup-case {A} {a} {as} {bs} {l+m} cs ds (♭ⁿ (length as + m)) m✓₂ cs≡as ds≡bs l+n≡l+m
       ≡ inj₂ (m , m✓₁)
 lookup-case-≫ cs ds n m✓₁ m✓₂ refl refl refl refl = 
   lookup♭-case-≫ cs ds n (n +♭ 0) m✓₁ m✓₂ (isoⁿ⁻¹ n)
 
 case-≫ : ∀ {A a} as {bs} (a∈bs : a ∈ bs) → (case {A} {a} as bs (as ≫ a∈bs) ≡ inj₂ a∈bs)
 case-≫ {A} {a} as {bs} (n , n✓) =
-  lookup-case-≫ {A} {a} {as} {bs} {n} {len as + n} (♭ as) (♭ bs) (♭ⁿ n) n✓ 
-    (lookup₂ as bs n n✓) (iso as) (iso bs) (isoⁿ (len as + n)) (isoⁿ n)
+  lookup-case-≫ {A} {a} {as} {bs} {n} {length as + n} (♭ as) (♭ bs) (♭ⁿ n) n✓ 
+    (lookup₂ as bs n n✓) (iso as) (iso bs) (isoⁿ (length as + n)) (isoⁿ n)
 
 -- A variant of case which remembers its argument
 

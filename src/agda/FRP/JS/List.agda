@@ -41,8 +41,8 @@ buildAppend as f (suc n) = buildAppend (f n ∷ as) f n
 build : ∀ {α} {A : Set α} → (ℕ → A) → ℕ → List A
 build = buildAppend []
 
-len : ∀ {α} {A : Set α} → List A → ℕ
-len = foldr (λ a n → suc n) zero
+length : ∀ {α} {A : Set α} → List A → ℕ
+length = foldr (λ a n → suc n) zero
 
 lookup : ∀ {α} {A : Set α} → List A → ℕ → Maybe A
 lookup []       x       = nothing
