@@ -343,6 +343,28 @@ case+ : ∀ {A a} as bs a∈as++bs → Case+ {A} {a} as bs a∈as++bs
 case+ {A} {a} as bs (n , n✓) = 
   lookup-case+ {A} {a} {as} {bs} {n} (♭ as) (♭ bs) (♭ⁿ n) n✓ (iso as) (iso bs) (isoⁿ n)
 
+-- ⋙ distributes through case
+
+case-⋙ : ∀ {A} {a : A} as bs cs (a∈bs++cs : a ∈ (bs ++ cs)) →
+  (as ⋙ case bs cs a∈bs++cs) ≡ (case (as ++ bs) cs (as ≫ a∈bs++cs))
+case-⋙ as bs cs a∈bs++cs with case+ bs cs a∈bs++cs 
+case-⋙ as bs cs .(a∈bs ≪ cs) | inj₁ a∈bs =
+  begin
+    as ⋙ case bs cs (a∈bs ≪ cs)
+  ≡⟨ cong (_⋙_ as) (case-≪ a∈bs cs) ⟩
+    inj₁ (as ≫ a∈bs)
+  ≡⟨ sym (case-≪ (as ≫ a∈bs) cs) ⟩
+    case (as ++ bs) cs (as ≫ a∈bs ≪ cs)
+  ∎
+case-⋙ as bs cs .(bs ≫ a∈cs) | inj₂ a∈cs =
+  begin
+    as ⋙ case bs cs (bs ≫ a∈cs)
+  ≡⟨ cong (_⋙_ as) (case-≫ bs a∈cs) ⟩
+    inj₂ a∈cs
+  ≡⟨ sym (case-≫ (as ++ bs) a∈cs) ⟩
+    case (as ++ bs) cs (as ≫ bs ≫ a∈cs)
+  ∎
+
 -- Three-way case, used for proving associativity properties
 
 data Case₃ {A} (a : A) as bs cs : Set where

@@ -2,7 +2,7 @@ import FRP.JS.Model.STLambdaC.Typ
 import FRP.JS.Model.STLambdaC.Exp
 import FRP.JS.Model.STLambdaC.NF
 
-open import FRP.JS.Model.Util using ( _≡_ ; refl ; sym ; subst ; subst₂ ; cong ; cong₂ )
+open import FRP.JS.Model.Util using ( _≡_ ; refl ; sym ; trans ; subst ; subst₂ ; cong ; cong₂ )
 
 module FRP.JS.Model.STLambdaC.Redn
   (TConst : Set) 
@@ -12,7 +12,8 @@ open module Typ = FRP.JS.Model.STLambdaC.Typ TConst using
   ( Typ ; Ctxt ; const ; _⇝_ ; [_] ; [] ; _∷_ ; _++_ ; case )
 
 open module Exp = FRP.JS.Model.STLambdaC.Exp TConst Const using 
-  ( Exp ; const ; abs ; app ; var ; substn ; weaken ; weaken+ ; var₀ )
+  ( Exp ; const ; abs ; app ; var ; var₀ 
+  ; substn ; weaken ; weaken* ; weaken+ ; weaken+-weaken+ )
 
 open module Redn = FRP.JS.Model.STLambdaC.NF TConst Const using 
   ( NF ; Atom ; app ; abs )
@@ -20,11 +21,16 @@ open module Redn = FRP.JS.Model.STLambdaC.NF TConst Const using
 -- Small-step reduction
 
 data _⇒_ {Γ} : ∀ {T : Typ} → Exp Γ T → Exp Γ T → Set where
-  beta : ∀ {T U} {M : Exp (T ∷ Γ) U} {N : Exp Γ T} → (app (abs {Γ} T M) N) ⇒ (substn {Γ} M N)
-  eta : ∀ {T U} {M : Exp Γ (T ⇝ U)} → M ⇒ (abs {Γ} T (app (weaken T M) (var₀ {Γ})))
-  lhs : ∀ {T U} {L M : Exp Γ (T ⇝ U)} {N : Exp Γ T} → (L ⇒ M) → (app L N ⇒ app M N)
-  rhs : ∀ {T U} {L : Exp Γ (T ⇝ U)} {M N : Exp Γ T} → (M ⇒ N) → (app L M ⇒ app L N)
-  abs : ∀ T {U} {M N : Exp (T ∷ Γ) U} → (M ⇒ N) → (abs {Γ} T M ⇒ abs {Γ} T N)
+  beta : ∀ {T U} (L : Exp (T ∷ Γ) U) (M : Exp Γ T) {N} → 
+    .(N ≡ substn {Γ} L M) → (app (abs {Γ} T L) M) ⇒ N
+  eta : ∀ {T U} (M : Exp Γ (T ⇝ U)) {N} → 
+    .(N ≡ abs {Γ} T (app (weaken T M) (var₀ {Γ}))) → (M ⇒ N)
+  lhs : ∀ {T U} {L M : Exp Γ (T ⇝ U)} {N : Exp Γ T} → 
+    (L ⇒ M) → (app L N ⇒ app M N)
+  rhs : ∀ {T U} {L : Exp Γ (T ⇝ U)} {M N : Exp Γ T} → 
+    (M ⇒ N) → (app L M ⇒ app L N)
+  abs : ∀ T {U} {M N : Exp (T ∷ Γ) U} →
+    (M ⇒ N) → (abs {Γ} T M ⇒ abs {Γ} T N)
 
 -- Reduction to normal form
 
@@ -52,16 +58,18 @@ data _⇓′ {Γ T} (M : Exp Γ T) : Set where
 -- Weakening
 
 -- rweaken+ : ∀ B Γ Δ {T M N} → (M ⇒ N) → (weaken+ B Γ Δ {T} M ⇒ weaken+ B Γ Δ {T} N)
--- rweaken+ B Γ Δ (beta {T} {U} {M} {N}) = subst (λ X → weaken+ B Γ Δ (app (abs {B ++ Δ} T M) N) ⇒ X) 
---   (sym (weaken+-substn B Γ Δ M N)) 
---   beta
--- rweaken+ B Γ Δ (eta {T} {U} {M}) = subst₂ (λ X Y → weaken+ B Γ Δ M ⇒ abs T (app X Y)) 
---   (weaken-weaken+ B Γ Δ T M) 
---   (sym (weaken-zero B Γ Δ T)) 
---   eta
+-- rweaken+ B Γ Δ (beta {T} L M N≡L[M/x]) = 
+--   beta (weaken+ (T ∷ B) Γ Δ L) (weaken+ B Γ Δ M) 
+--     (trans (cong (weaken+ B Γ Δ) N≡L[M/x]) (weaken+-substn B Γ Δ L M))
+-- rweaken+ B Γ Δ (eta {T} M N≡λx→Mx) = 
+--   eta (weaken+ B Γ Δ M)
+--     (trans (cong (weaken+ B Γ Δ) N≡λx→Mx) 
+--       (cong (abs T) (cong₂ app 
+--         (sym (weaken+-weaken+ [] [ T ] B Γ Δ M))
+--         (weaken+-var₀ B Γ Δ))))
 -- rweaken+ B Γ Δ (lhs M⇒N)   = lhs (rweaken+ B Γ Δ M⇒N)
 -- rweaken+ B Γ Δ (rhs M⇒N)   = rhs (rweaken+ B Γ Δ M⇒N)
--- rweaken+ B Γ Δ (abs T M⇒N) = abs T (rweaken+ (T ◁ B) Γ Δ M⇒N)
+-- rweaken+ B Γ Δ (abs T M⇒N) = abs T (rweaken+ (T ∷ B) Γ Δ M⇒N)
 
 -- rweaken* : ∀ Γ Δ {T M N} → (M ⇒ N) → (weaken* Γ Δ {T} M ⇒ weaken* Γ Δ {T} N)
--- rweaken* = rweaken+ ∅
+-- rweaken* = rweaken+ []
