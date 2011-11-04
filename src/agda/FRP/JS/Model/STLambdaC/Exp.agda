@@ -1,7 +1,7 @@
 import FRP.JS.Model.STLambdaC.Typ
 
 open import FRP.JS.Model.Util using 
-  ( _≡_ ; refl ; sym ; cong ; cong₂ ; subst ; begin_ ; _≡⟨_⟩_ ; _∎ ; _∘_ ; ⊥ )
+  ( _≡_ ; refl ; sym ; cong ; cong₂ ; subst ; subst-natural ; begin_ ; _≡⟨_⟩_ ; _∎ ; _∘_ ; ⊥ )
 
 module FRP.JS.Model.STLambdaC.Exp 
   (TConst : Set) 
@@ -204,11 +204,16 @@ mutual
   
     xsubstn+-∙ : ∀ {k l} B Γ Δ E (σ : Substn k Γ Δ) (ρ : Substn l Δ E) {T} (x : Case T B E) →
       (substn+ B Γ Δ σ (expr (xsubstn+ B Δ E ρ x)) ≡ expr (xsubstn+ B Γ E (σ ∙ ρ) x))
-    xsubstn+-∙ {k}       {var}     B Γ Δ E σ ρ (inj₁ x) = cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≪ x Δ)
-    xsubstn+-∙ {var}     {exp var} B Γ Δ E σ ρ (inj₁ x) = cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≪ x Δ)
-    xsubstn+-∙ {exp var} {exp var} B Γ Δ E σ ρ (inj₁ x) = cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≪ x Δ)
-    xsubstn+-∙ {var}     {var}     B Γ Δ E σ ρ (inj₂ x) = cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≫ B (ρ x))
-    xsubstn+-∙ {exp var} {var}     B Γ Δ E σ ρ (inj₂ x) = cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≫ B (ρ x))
+    xsubstn+-∙ {k}       {var}     B Γ Δ E σ ρ (inj₁ x) = 
+      cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≪ x Δ)
+    xsubstn+-∙ {var}     {exp var} B Γ Δ E σ ρ (inj₁ x) = 
+      cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≪ x Δ)
+    xsubstn+-∙ {exp var} {exp var} B Γ Δ E σ ρ (inj₁ x) = 
+      cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≪ x Δ)
+    xsubstn+-∙ {var}     {var}     B Γ Δ E σ ρ (inj₂ x) = 
+      cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≫ B (ρ x))
+    xsubstn+-∙ {exp var} {var}     B Γ Δ E σ ρ (inj₂ x) =
+      cong (expr ∘ xsubstn+ B Γ Δ σ) (case-≫ B (ρ x))
     xsubstn+-∙ {var}     {exp var} B Γ Δ E σ ρ (inj₂ x) = 
       begin
         substn+ B Γ Δ σ (weaken* B (ρ x))
@@ -323,4 +328,75 @@ weaken*-comm A B Γ Δ M =
       par (id (A ++ B)) (snd Γ Δ) (A ⋙ (case B Δ x))
     ≡⟨ cong (par (id (A ++ B)) (snd Γ Δ)) (case-⋙ A B Δ x) ⟩
       par (id (A ++ B)) (snd Γ Δ) (case (A ++ B) Δ (A ≫ x))
+    ∎
+
+weaken-comm : ∀ T B Γ Δ {U} (M : Exp (B ++ Δ) U) →
+  weaken T (weaken+ B Γ Δ M)
+    ≡ weaken+ (T ∷ B) Γ Δ (weaken T M)
+weaken-comm T = weaken*-comm [ T ]
+
+-- Weakening distributes through susbtn
+
+weaken-substn : ∀ B Γ Δ {T U} (M : Exp (B ++ Δ) T) (N : Exp (T ∷ B ++ Δ) U) →
+  substn (weaken+ B Γ Δ M) (weaken+ (T ∷ B) Γ Δ N)
+    ≡ weaken+ B Γ Δ (substn M N)
+weaken-substn B Γ Δ {T} M N = begin
+    substn (weaken+ B Γ Δ M) (weaken+ (T ∷ B) Γ Δ N)
+  ≡⟨ cong₂ substn (substn+* B (Γ ++ Δ) Δ (snd Γ Δ) M) (substn+* (T ∷ B) (Γ ++ Δ) Δ (snd Γ Δ) N) ⟩
+    substn (substn* (id B +++ snd Γ Δ) M) (substn* (id (T ∷ B) +++ snd Γ Δ) N)
+  ≡⟨ substn*-∙ (substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) (id (T ∷ B) +++ snd Γ Δ) N ⟩
+    substn* ((substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) ∙ (id (T ∷ B) +++ snd Γ Δ)) N
+  ≡⟨ substn*-cong lemma₂ N ⟩
+    substn* ((id B +++ snd Γ Δ) ∙ (M ◁ id (B ++ Δ))) N
+  ≡⟨ sym (substn*-∙ (id B +++ snd Γ Δ) (M ◁ id (B ++ Δ)) N) ⟩
+    substn* (id B +++ snd Γ Δ) (substn M N)
+  ≡⟨ sym (substn+* B (Γ ++ Δ) Δ (snd Γ Δ) (substn M N)) ⟩
+    weaken+ B Γ Δ (substn M N)
+  ∎ where
+
+  lemma₁ : ∀ {S} (x : Case₃ S [ T ] B Δ) → 
+    (substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) 
+      (par (id (T ∷ B)) (snd Γ Δ) (caseˡ x))
+        ≡ substn* (id B +++ snd Γ Δ)
+            (choose ⟨ M ⟩ (id (B ++ Δ)) (caseʳ x))
+  lemma₁ (inj₁ x) = begin
+      (substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) (x ≪ B ≪ Γ ≪ Δ)
+    ≡⟨ cong (choose ⟨ substn* (id B +++ snd Γ Δ) M ⟩ (id (B ++ Γ ++ Δ))) (case-≪ x (B ++ Γ ++ Δ)) ⟩
+      ⟨ substn* (id B +++ snd Γ Δ) M ⟩ x
+    ≡⟨ subst-natural (uniq x) (substn* (id B +++ snd Γ Δ)) M ⟩
+      substn* (id B +++ snd Γ Δ) (⟨ M ⟩ x)
+    ∎
+  lemma₁ (inj₂ x) = begin
+      (substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) ([ T ] ≫ x ≪ Γ ≪ Δ)
+    ≡⟨ cong (choose ⟨ substn* (id B +++ snd Γ Δ) M ⟩ (id (B ++ Γ ++ Δ))) (case-≫ [ T ] (x ≪ Γ ≪ Δ)) ⟩
+      var (x ≪ Γ ≪ Δ)
+    ≡⟨ cong (var ∘ par (id B) (snd Γ Δ)) (sym (case-≪ x Δ)) ⟩
+      var ((id B +++ snd Γ Δ) (x ≪ Δ))
+    ≡⟨ cong (var ∘ xsubstn+ [] (B ++ Γ ++ Δ) (B ++ Δ) (id B +++ snd Γ Δ)) (sym (case-≫ [] (x ≪ Δ))) ⟩
+      substn* (id B +++ snd Γ Δ) (var (x ≪ Δ))
+    ∎
+  lemma₁ (inj₃ x) = begin
+      (substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) ([ T ] ≫ B ≫ Γ ≫ x)
+    ≡⟨ cong (choose ⟨ substn* (id B +++ snd Γ Δ) M ⟩ (id (B ++ Γ ++ Δ))) (case-≫ [ T ] (B ≫ Γ ≫ x)) ⟩
+      var (B ≫ Γ ≫ x)
+    ≡⟨ cong (var ∘ par (id B) (snd Γ Δ)) (sym (case-≫ B x)) ⟩
+      var ((id B +++ snd Γ Δ) (B ≫ x))
+    ≡⟨ cong (var ∘ xsubstn+ [] (B ++ Γ ++ Δ) (B ++ Δ) (id B +++ snd Γ Δ)) (sym (case-≫ [] (B ≫ x))) ⟩
+      substn* (id B +++ snd Γ Δ) (var (B ≫ x))
+    ∎
+
+  lemma₂ : ((substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) ∙ (id (T ∷ B) +++ snd Γ Δ))
+    ≈ ((id B +++ snd Γ Δ) ∙ (M ◁ id (B ++ Δ)))
+  lemma₂ {S} x = begin
+      ((substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) ∙ (id (T ∷ B) +++ snd Γ Δ)) x
+    ≡⟨ cong (substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ) ∘ par (id (T ∷ B)) (snd Γ Δ)) 
+         (sym (caseˡ₃ [ T ] B Δ x)) ⟩
+      (substn* (id B +++ snd Γ Δ) M ◁ id (B ++ Γ ++ Δ)) 
+        (par (id (T ∷ B)) (snd Γ Δ) (caseˡ (case₃ [ T ] B Δ x)))
+    ≡⟨ lemma₁ (case₃ [ T ] B Δ x) ⟩
+      substn* (id B +++ snd Γ Δ)
+        (choose ⟨ M ⟩ (id (B ++ Δ)) (caseʳ (case₃ [ T ] B Δ x)))
+    ≡⟨ cong (substn* (id B +++ snd Γ Δ) ∘ choose ⟨ M ⟩ (id (B ++ Δ)))
+         (caseʳ₃ [ T ] B Δ x) ⟩
+      ((id B +++ snd Γ Δ) ∙ (M ◁ id (B ++ Δ))) x
     ∎

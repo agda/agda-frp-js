@@ -58,6 +58,11 @@ cong₂ f refl refl = refl
   (a≡b : a ≡ b) → (subst B a≡b c ≡ d) → (f a c ≡ f b d)
 δcong₂ f refl refl = refl
 
+subst-natural : {A : Set} {B C : A → Set} {a₁ a₂ : A} (p : a₁ ≡ a₂) 
+  (f : ∀ {a} → B a → C a) (b : B a₁) →
+    subst C p (f b) ≡ f (subst B p b)
+subst-natural refl f b = refl
+
 private
   primitive
     primTrustMe : ∀ {α} {A : Set α} {a b : A} → (a ≡ b)
