@@ -31,12 +31,13 @@ mutual
   aweaken+ : ∀ B Γ Δ {T M} → Atom M → Atom (weaken+ B Γ Δ {T} M)
   aweaken+ B Γ Δ (const c) = const c
   aweaken+ B Γ Δ (app M N) = app (aweaken+ B Γ Δ M) (nweaken+ B Γ Δ N)
-  aweaken+ B Γ Δ (var x)   = var (xweaken+ B Γ Δ (case B Δ x))
+  aweaken+ B Γ Δ (var x)   = var (xweaken+ B Γ Δ x)
 
   nweaken+ : ∀ B Γ Δ {T M} → NF M → NF (weaken+ B Γ Δ {T} M)
   nweaken+ B Γ Δ (atom N)   = atom (aweaken+ B Γ Δ N)
   nweaken+ B Γ Δ (abs T N)  = abs T (nweaken+ (T ∷ B) Γ Δ N)
 
-aweaken* : ∀ Γ Δ {T M} → Atom M → Atom (weaken* Γ Δ {T} M)
-aweaken* = aweaken+ []
+aweaken* : ∀ Γ {Δ T M} → Atom M → Atom (weaken* Γ {Δ} {T} M)
+aweaken* Γ {Δ} = aweaken+ [] Γ Δ
+
 

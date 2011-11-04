@@ -246,11 +246,11 @@ index-inj a (m , m✓) (.m , n✓) refl = refl
 -- Membership of singleton
 
 lookup-uniq : ∀ {A} {a : A} {m} {b} n → (♯ⁿ n ≡ m) → 
-  (lookup (b ∷ []) m ≡ just a) → (a ≡ b)
+  (lookup (b ∷ []) m ≡ just a) → (b ≡ a)
 lookup-uniq zero    refl refl = refl
 lookup-uniq (suc n) refl ()
 
-uniq : ∀ {A} {a b : A} → (a ∈ [ b ]) → (a ≡ b)
+uniq : ∀ {A} {a b : A} → (a ∈ [ b ]) → (b ≡ a)
 uniq (n , n✓) = lookup-uniq (♭ⁿ n) (isoⁿ n) (≡-relevant n✓)
 
 singleton : ∀ {A} (a : A) → (a ∈ [ a ])

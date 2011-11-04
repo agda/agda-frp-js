@@ -11,6 +11,8 @@ id a = a
 _∘_ : ∀ {A B C : Set} → (B → C) → (A → B) → (A → C)
 f ∘ g = λ x → f (g x)
 
+data ⊥ {α} : Set α where
+
 record Σ {α β} (A : Set α) (B : A → Set β) : Set (α ⊔ β) where
   constructor _,_
   field

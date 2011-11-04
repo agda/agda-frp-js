@@ -13,7 +13,7 @@ open module Typ = FRP.JS.Model.STLambdaC.Typ TConst using
 
 open module Exp = FRP.JS.Model.STLambdaC.Exp TConst Const using 
   ( Exp ; const ; abs ; app ; var ; var₀ 
-  ; substn ; weaken ; weaken* ; weaken+ ; weaken+-weaken+ )
+  ; substn ; weaken ; weaken* ; weaken+ )
 
 open module Redn = FRP.JS.Model.STLambdaC.NF TConst Const using 
   ( NF ; Atom ; app ; abs )
@@ -22,7 +22,7 @@ open module Redn = FRP.JS.Model.STLambdaC.NF TConst Const using
 
 data _⇒_ {Γ} : ∀ {T : Typ} → Exp Γ T → Exp Γ T → Set where
   beta : ∀ {T U} (L : Exp (T ∷ Γ) U) (M : Exp Γ T) {N} → 
-    .(N ≡ substn {Γ} L M) → (app (abs {Γ} T L) M) ⇒ N
+    .(N ≡ substn M L) → (app (abs {Γ} T L) M) ⇒ N
   eta : ∀ {T U} (M : Exp Γ (T ⇝ U)) {N} → 
     .(N ≡ abs {Γ} T (app (weaken T M) (var₀ {Γ}))) → (M ⇒ N)
   lhs : ∀ {T U} {L M : Exp Γ (T ⇝ U)} {N : Exp Γ T} → 
