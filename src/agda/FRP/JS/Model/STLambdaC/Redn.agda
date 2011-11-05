@@ -13,7 +13,7 @@ open module Typ = FRP.JS.Model.STLambdaC.Typ TConst using
 
 open module Exp = FRP.JS.Model.STLambdaC.Exp TConst Const using 
   ( Exp ; const ; abs ; app ; var ; var₀ 
-  ; substn ; weaken ; weaken* ; weaken+ )
+  ; substn ; weaken ; weaken* ; weaken+ ; weaken-comm ; weaken-substn ; weaken+-var₀ )
 
 open module Redn = FRP.JS.Model.STLambdaC.NF TConst Const using 
   ( NF ; Atom ; app ; abs )
@@ -57,19 +57,22 @@ data _⇓′ {Γ T} (M : Exp Γ T) : Set where
 
 -- Weakening
 
--- rweaken+ : ∀ B Γ Δ {T M N} → (M ⇒ N) → (weaken+ B Γ Δ {T} M ⇒ weaken+ B Γ Δ {T} N)
--- rweaken+ B Γ Δ (beta {T} L M N≡L[M/x]) = 
---   beta (weaken+ (T ∷ B) Γ Δ L) (weaken+ B Γ Δ M) 
---     (trans (cong (weaken+ B Γ Δ) N≡L[M/x]) (weaken+-substn B Γ Δ L M))
--- rweaken+ B Γ Δ (eta {T} M N≡λx→Mx) = 
---   eta (weaken+ B Γ Δ M)
---     (trans (cong (weaken+ B Γ Δ) N≡λx→Mx) 
---       (cong (abs T) (cong₂ app 
---         (sym (weaken+-weaken+ [] [ T ] B Γ Δ M))
---         (weaken+-var₀ B Γ Δ))))
--- rweaken+ B Γ Δ (lhs M⇒N)   = lhs (rweaken+ B Γ Δ M⇒N)
--- rweaken+ B Γ Δ (rhs M⇒N)   = rhs (rweaken+ B Γ Δ M⇒N)
--- rweaken+ B Γ Δ (abs T M⇒N) = abs T (rweaken+ (T ∷ B) Γ Δ M⇒N)
+rweaken+ : ∀ B Γ Δ {T} {M N : Exp (B ++ Δ) T} → (M ⇒ N) → (weaken+ B Γ Δ M ⇒ weaken+ B Γ Δ N)
+rweaken+ B Γ Δ (beta {T} L M N≡L[M/x]) = 
+  beta (weaken+ (T ∷ B) Γ Δ L) (weaken+ B Γ Δ M) 
+    (trans (cong (weaken+ B Γ Δ) N≡L[M/x]) (sym (weaken-substn B Γ Δ M L)))
+rweaken+ B Γ Δ (eta {T} M N≡λx→Mx) = 
+  eta (weaken+ B Γ Δ M)
+    (trans (cong (weaken+ B Γ Δ) N≡λx→Mx) 
+      (cong (abs T) (cong₂ app 
+        (sym (weaken-comm T B Γ Δ M))
+        (weaken+-var₀ B Γ Δ))))
+rweaken+ B Γ Δ (lhs M⇒N)   = lhs (rweaken+ B Γ Δ M⇒N)
+rweaken+ B Γ Δ (rhs M⇒N)   = rhs (rweaken+ B Γ Δ M⇒N)
+rweaken+ B Γ Δ (abs T M⇒N) = abs T (rweaken+ (T ∷ B) Γ Δ M⇒N)
 
--- rweaken* : ∀ Γ Δ {T M N} → (M ⇒ N) → (weaken* Γ Δ {T} M ⇒ weaken* Γ Δ {T} N)
--- rweaken* = rweaken+ []
+rweaken* : ∀ Γ {Δ T} {M N : Exp Δ T} → (M ⇒ N) → (weaken* Γ M ⇒ weaken* Γ N)
+rweaken* Γ {Δ} = rweaken+ [] Γ Δ
+
+rweaken : ∀ T {Δ U} {M N : Exp Δ U} → (M ⇒ N) → (weaken T M ⇒ weaken T N)
+rweaken T = rweaken* [ T ]

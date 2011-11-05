@@ -171,6 +171,11 @@ weaken*ʳ-var : ∀ {Γ} Δ {T} (x : T ∈ Γ) →
   weaken*ʳ Δ (var x) ≡ var (x ≪ Δ)
 weaken*ʳ-var {Γ} Δ x = cong (expr ∘ xsubstn+ Γ Δ [] (snd Δ [])) (case-≪ x [])
 
+weaken+-var₀ : ∀ B Γ Δ {T} →
+  weaken+ (T ∷ B) Γ Δ (var₀ {B ++ Δ}) ≡ var₀ {B ++ Γ ++ Δ}
+weaken+-var₀ B Γ Δ {T} = 
+  cong (var ∘ xsubstn+ (T ∷ B) (Γ ++ Δ) Δ (snd Γ Δ)) (case-≪ (singleton T ≪ B) Δ)
+
 -- Substitution respects extensional equality
 
 substn+-cong : ∀ {k} B Γ Δ {σ : Substn k Γ Δ} {ρ : Substn k Γ Δ} → 
