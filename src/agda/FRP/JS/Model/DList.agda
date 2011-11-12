@@ -343,6 +343,23 @@ case+ : ∀ {A a} as bs a∈as++bs → Case+ {A} {a} as bs a∈as++bs
 case+ {A} {a} as bs (n , n✓) = 
   lookup-case+ {A} {a} {as} {bs} {n} (♭ as) (♭ bs) (♭ⁿ n) n✓ (iso as) (iso bs) (isoⁿ n)
 
+-- Inverse of case
+
+case⁻¹ : ∀ {A a as bs} → Case {A} a as bs → (a ∈ (as ++ bs))
+case⁻¹ {A} {a} {as} {bs} (inj₁ a∈as) = (a∈as ≪ bs)
+case⁻¹ {A} {a} {as} {bs} (inj₂ a∈bs) = (as ≫ a∈bs)
+
+case-iso : ∀ {A a} as bs (a∈as++bs : a ∈ (as ++ bs)) → 
+  case⁻¹ (case {A} {a} as bs a∈as++bs) ≡ a∈as++bs
+case-iso as bs a∈as++bs     with case+ as bs a∈as++bs
+case-iso as bs .(a∈as ≪ bs) | inj₁ a∈as = cong case⁻¹ (case-≪ a∈as bs)
+case-iso as bs .(as ≫ a∈bs) | inj₂ a∈bs = cong case⁻¹ (case-≫ as a∈bs)
+
+case-iso⁻¹ : ∀ {A a} as bs (a∈as++bs : Case a as bs) → 
+  case {A} {a} as bs (case⁻¹ a∈as++bs) ≡ a∈as++bs
+case-iso⁻¹ as bs (inj₁ a∈as) = case-≪ a∈as bs
+case-iso⁻¹ as bs (inj₂ a∈bs) = case-≫ as a∈bs
+
 -- ⋙ distributes through case
 
 case-⋙ : ∀ {A} {a : A} as bs cs (a∈bs++cs : a ∈ (bs ++ cs)) →

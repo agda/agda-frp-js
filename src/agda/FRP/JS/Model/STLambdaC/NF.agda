@@ -6,10 +6,10 @@ module FRP.JS.Model.STLambdaC.NF
   (Const : FRP.JS.Model.STLambdaC.Typ.Typ TConst → Set) where
 
 open module Typ = FRP.JS.Model.STLambdaC.Typ TConst using 
-  ( Typ ; Ctxt ; const ; _⇝_ ; [_] ; [] ; _∷_ ; _++_ ; case )
+  ( Typ ; Ctxt ; const ; _⇝_ ; [_] ; [] ; _∷_ ; _++_ ; case ; singleton ; _≪_ )
 
 open module Exp = FRP.JS.Model.STLambdaC.Exp TConst Const using 
-  ( Exp ; const ; abs ; app ; var ; weaken+ ; weaken* ; xweaken+ )
+  ( Exp ; const ; abs ; app ; var ; var₀ ; weaken+ ; weaken* ; xweaken+ )
 
 mutual
 
@@ -23,6 +23,11 @@ mutual
   data NF {Γ : Ctxt} : ∀ {T} → Exp Γ T → Set where
     atom : ∀ {C} {M : Exp Γ (const C)} → Atom M → NF M
     abs : ∀ T {U} {M : Exp (T ∷ Γ) U} → NF M → NF (abs {Γ} T M)
+
+-- Shorthand
+
+atom₀ : ∀ {Γ T} → Atom (var₀ {Γ} {T})
+atom₀ {Γ} {T} = var (singleton T ≪ Γ)
 
 -- Weakening
 

@@ -46,6 +46,10 @@ subst₂ :  ∀ {α β γ} {A : Set α} {B : Set β} (C : A → B → Set γ) {a
   (a ≡ b) → (c ≡ d) → C a c → C b d
 subst₂ C refl refl c = c
 
+δsubst₂ :  ∀ {α β γ} {A : Set α} {B : A → Set β} (C : ∀ a → B a → Set γ) {a b c d} →
+  (a≡b : a ≡ b) → (subst B a≡b c ≡ d) → C a c → C b d
+δsubst₂ C refl refl c = c
+
 cong : ∀ {α β} {A : Set α} {B : Set β} (f : A → B) {a b} →
   (a ≡ b) → (f a ≡ f b)
 cong f refl = refl

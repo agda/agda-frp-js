@@ -11,7 +11,7 @@ open module Typ = FRP.JS.Model.STLambdaC.Typ TConst using
   ( Typ ; Var ; Ctxt ; const ; _⇝_
   ; [] ; [_] ; _++_ ; _∷_ ; _∈_ ; _≪_ ; _≫_ ; _⋙_ ; uniq ; singleton
   ; Case ; case ; inj₁ ; inj₂ ; inj₃ ; case-≪ ; case-≫ ; case-⋙
-  ; Case₃ ; case₃ ; caseˡ ; caseʳ ; caseˡ₃ ; caseʳ₃ )
+  ; Case₃ ; case₃ ; caseˡ ; caseʳ ; caseˡ₃ ; caseʳ₃ ; case⁻¹ ; case-iso )
 
 -- Syntax
 
@@ -125,20 +125,23 @@ substn* {k} {Γ} {Δ} = substn+ [] Γ Δ
 substn : ∀ {Γ T U} → Exp Γ T → Exp (T ∷ Γ) U → Exp Γ U
 substn {Γ} M = substn* (M ◁ id Γ)
 
+xweaken+ : ∀ B Γ Δ {T} → (T ∈ (B ++ Δ)) → (T ∈ (B ++ Γ ++ Δ))
+xweaken+ B Γ Δ x = xsubstn+ B (Γ ++ Δ) Δ (snd Γ Δ) (case B Δ x)
+
 weaken+ : ∀ B Γ Δ {T} → Exp (B ++ Δ) T → Exp (B ++ Γ ++ Δ) T
 weaken+ B Γ Δ = substn+ B (Γ ++ Δ) Δ (snd Γ Δ)
 
 weaken* : ∀ Γ {Δ T} → Exp Δ T → Exp (Γ ++ Δ) T
 weaken* Γ {Δ} = weaken+ [] Γ Δ 
 
+weakens* : ∀ {Γ Δ} E → Substn (exp var) Γ Δ → Substn (exp var) (E ++ Γ) Δ
+weakens* E σ x = weaken* E (σ x)
+
 weaken*ʳ : ∀ {Γ} Δ {T} → Exp Γ T → Exp (Γ ++ Δ) T
 weaken*ʳ {Γ} Δ = weaken+ Γ Δ []
 
 weaken : ∀ {Γ} T {U} → Exp Γ U → Exp (T ∷ Γ) U
 weaken T = weaken* [ T ]
-
-xweaken+ : ∀ B Γ Δ {T} → (T ∈ (B ++ Δ)) → (T ∈ (B ++ Γ ++ Δ))
-xweaken+ B Γ Δ x = xsubstn+ B (Γ ++ Δ) Δ (snd Γ Δ) (case B Δ x)
 
 -- Composition of substitutions
 
@@ -195,6 +198,34 @@ substn+-cong B Γ Δ σ≈ρ (var x)   = cong expr (xsubstn+-cong B Γ Δ σ≈�
 substn*-cong : ∀ {k Γ Δ} {σ : Substn k Γ Δ} {ρ : Substn k Γ Δ} → 
   (σ ≈ ρ) → ∀ {T} M → substn* σ {T} M ≡ substn* ρ M
 substn*-cong {k} {Γ} {Δ} = substn+-cong [] Γ Δ
+
+-- Identity of substitutions
+
+xsubstn+-id : ∀ {k} B Γ {T} (x : Case T B Γ) →
+  expr (xsubstn+ B Γ Γ (id {k} Γ) x) ≡ var (case⁻¹ x)
+xsubstn+-id {var}     B Γ (inj₁ x) = refl
+xsubstn+-id {exp var} B Γ (inj₁ x) = refl
+xsubstn+-id {var}     B Γ (inj₂ x) = refl
+xsubstn+-id {exp var} B Γ (inj₂ x) = weaken*-var B x
+
+substn+-id : ∀ {k} B Γ {T} (M : Exp (B ++ Γ) T) → substn+ B Γ Γ (id {k} Γ) M ≡ M
+substn+-id B Γ (const c) = refl
+substn+-id B Γ (abs T M) = cong (abs {B ++ Γ} T) (substn+-id (T ∷ B) Γ M)
+substn+-id B Γ (app M N) = cong₂ app (substn+-id B Γ M) (substn+-id B Γ N)
+substn+-id {k} B Γ (var x)   =
+  begin
+    substn+ B Γ Γ (id {k} Γ) (var x)
+  ≡⟨ xsubstn+-id {k} B Γ (case B Γ x) ⟩
+    var (case⁻¹ (case B Γ x))
+  ≡⟨ cong var (case-iso B Γ x) ⟩
+    var x
+  ∎
+
+substn*-id : ∀ {k Γ T} (M : Exp Γ T) → substn* (id {k} Γ) M ≡ M
+substn*-id {k} {Γ} = substn+-id [] Γ
+
+weaken*-[] : ∀ {Γ T} (M : Exp Γ T) → weaken* [] M ≡ M
+weaken*-[] M = substn*-id M
 
 mutual
   
@@ -405,3 +436,54 @@ weaken-substn B Γ Δ {T} M N = begin
          (caseʳ₃ [ T ] B Δ x) ⟩
       ((id B +++ snd Γ Δ) ∙ (M ◁ id (B ++ Δ))) x
     ∎
+
+-- Substitution into weakening discards the substitution
+
+substn-weaken : ∀ {Γ T U} (M : Exp Γ U) (N : Exp Γ T) →
+  substn N (weaken T M) ≡ M
+substn-weaken {Γ} {T} M N = 
+  begin
+    substn N (weaken T M)
+  ≡⟨ substn*-∙ (N ◁ id Γ) (snd [ T ] Γ) M ⟩
+    substn* ((N ◁ id Γ) ∙ snd [ T ] Γ) M
+  ≡⟨ substn*-cong (λ x → cong (choose ⟨ N ⟩ (id Γ)) (case-≫ [ T ] x)) M ⟩
+    substn* (id Γ) M
+  ≡⟨ substn*-id M ⟩
+    M
+  ∎ 
+
+-- Substitution + weakening respects ◁
+
+substn*-◁ : ∀ Γ Δ E {T U} (M : Exp (T ∷ Γ) U) (N : Exp (E ++ Δ) T) (σ : Substn (exp var) Δ Γ) →
+  substn* (N ◁ weakens* E σ) M
+    ≡ substn N (weaken+ [ T ] E Δ (substn+ [ T ] Δ Γ σ M))
+substn*-◁ Γ Δ E {T} M N σ =
+  begin
+    substn* (N ◁ weakens* E σ) M
+  ≡⟨ substn*-cong (λ x → lemma (case [ T ] Γ x)) M ⟩
+    substn* ((N ◁ id (E ++ Δ)) ∙ (id [ T ] +++ (snd E Δ ∙ σ))) M
+  ≡⟨ sym (substn*-∙ (N ◁ id (E ++ Δ)) (id [ T ] +++ (snd E Δ ∙ σ)) M) ⟩
+    substn N (substn* (id [ T ] +++ (snd E Δ ∙ σ)) M)
+  ≡⟨ cong (substn N) (sym (substn+* [ T ] (E ++ Δ) Γ (snd E Δ ∙ σ) M)) ⟩
+    substn N (substn+ [ T ] (E ++ Δ) Γ (snd E Δ ∙ σ) M)
+  ≡⟨ cong (substn N) (sym (substn+-∙ [ T ] (E ++ Δ) Δ Γ (snd E Δ) σ M)) ⟩
+    substn N (weaken+ [ T ] E Δ (substn+ [ T ] Δ Γ σ M))
+  ∎ where
+
+  lemma : ∀ {U} (x : Case U [ T ] Γ) → 
+    choose ⟨ N ⟩ (weakens* E σ) x
+      ≡ substn N (par (id [ T ]) (snd E Δ ∙ σ) x)
+  lemma (inj₁ x) =
+    begin
+      subst (Exp (E ++ Δ)) (uniq x) N
+    ≡⟨ cong (choose ⟨ N ⟩ (id (E ++ Δ))) (sym (case-≪ x (E ++ Δ))) ⟩
+      (N ◁ id (E ++ Δ)) (x ≪ E ≪ Δ)
+    ≡⟨ sym (weaken*-[] ((N ◁ id (E ++ Δ)) (x ≪ E ≪ Δ))) ⟩
+      weaken* [] ((N ◁ id (E ++ Δ)) (x ≪ E ≪ Δ))
+    ≡⟨ cong (xsubstn+ [] (E ++ Δ) ([ T ] ++ E ++ Δ) (N ◁ id (E ++ Δ))) 
+         (sym (case-≫ [] (x ≪ E ≪ Δ))) ⟩
+     substn N (var (x ≪ E ≪ Δ))
+    ≡⟨ cong (substn N) (sym (weaken*ʳ-var (E ++ Δ) x)) ⟩
+     substn N (weaken*ʳ (E ++ Δ) (var x))
+    ∎
+  lemma (inj₂ x) = sym (substn-weaken (weaken* E (σ x)) N)
