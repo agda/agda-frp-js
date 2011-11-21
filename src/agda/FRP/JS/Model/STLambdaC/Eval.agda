@@ -24,7 +24,7 @@ open module NF = FRP.JS.Model.STLambdaC.NF TConst Const using
   ( Atom ; NF ; var ; const ; app ; abs ; atom ; atom₀ ; aweaken* )
 
 open module Redn = FRP.JS.Model.STLambdaC.Redn TConst Const using 
-  ( _⇒_ ; _⇓ ; _⇓′ ; eta ; beta ; lhs ; atom ; nf ; redn ; ⇓abs ; ⇓app ; rweaken* )
+  ( _⇒_ ; _⇓ ; _⇓′ ; eta ; beta ; lhs ; atom ; nf ; redn ; tgt ; ⇓abs ; ⇓app ; rweaken* )
 
 -- Values
 
@@ -118,3 +118,6 @@ vid Γ x = reflect (atom (var x))
 
 normalize : ∀ {Γ T} → (M : Exp Γ T) → (M ⇓)
 normalize {Γ} M = reify (subst Val (substn*-id M) (eval M (vid Γ)))
+
+normal : ∀ {Γ T} → Exp Γ T → Exp Γ T
+normal M = tgt (normalize M)

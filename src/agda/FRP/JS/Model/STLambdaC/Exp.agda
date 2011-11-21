@@ -26,6 +26,12 @@ data Exp (Γ : Ctxt) : Typ → Set where
 var₀ : ∀ {Γ T} → Exp (T ∷ Γ) T
 var₀ {Γ} {T} = var (singleton T ≪ Γ)
 
+var₁ : ∀ {Γ T U} → Exp (U ∷ (T ∷ Γ)) T
+var₁ {Γ} {T} {U} = var ([ U ] ≫ singleton T ≪ Γ)
+
+var₂ : ∀ {Γ T U V} → Exp (V ∷ (U ∷ (T ∷ Γ))) T
+var₂ {Γ} {T} {U} {V} = var ([ V ] ≫ [ U ] ≫ singleton T ≪ Γ)
+
 -- Andreas Abel suggested defining substitution and renaming together, citing:
 --
 --   Conor McBride

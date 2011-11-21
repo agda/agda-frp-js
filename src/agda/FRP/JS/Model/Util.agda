@@ -11,6 +11,9 @@ id a = a
 _∘_ : ∀ {A B C : Set} → (B → C) → (A → B) → (A → C)
 f ∘ g = λ x → f (g x)
 
+record ⊤ {α} : Set α where
+  constructor tt
+
 data ⊥ {α} : Set α where
 
 record Σ {α β} (A : Set α) (B : A → Set β) : Set (α ⊔ β) where
@@ -20,6 +23,9 @@ record Σ {α β} (A : Set α) (B : A → Set β) : Set (α ⊔ β) where
     proj₂ : B proj₁
 
 open Σ public
+
+∃ : ∀ {α β} {A : Set α} → (A → Set β) → Set (α ⊔ β)
+∃ {α} {β} {A} B = Σ A B
 
 _×_ : ∀ {α β} → Set α → Set β → Set (α ⊔ β)
 A × B = Σ A (λ a → B)

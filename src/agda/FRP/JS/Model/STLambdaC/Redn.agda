@@ -44,6 +44,12 @@ data _⇓′ {Γ T} (M : Exp Γ T) : Set where
   atom : Atom M → (M ⇓′)
   redn : ∀ {N} → (M ⇒ N) → (N ⇓′) → (M ⇓′)
 
+-- Target of normalization
+
+tgt : ∀ {Γ T} {M : Exp Γ T} → (M ⇓) → Exp Γ T
+tgt {Γ} {T} {M} (nf M⇓) = M
+tgt       (redn M⇒N N⇓) = tgt N⇓
+
 -- Normalization is closed under abstraction and application
 
 ⇓abs : ∀ {Γ} T {U} {M : Exp (T ∷ Γ) U} → (M ⇓) → (abs {Γ} T M ⇓)

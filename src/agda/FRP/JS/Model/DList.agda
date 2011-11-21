@@ -2,7 +2,7 @@ open import FRP.JS.Model.Util using
   ( _≡_ ; refl ; sym ; subst ; cong ; cong₂ ; begin_ ; _≡⟨_⟩_ ; _∎ ; ≡-relevant
   ; id ; _∘_  )
 open import FRP.JS.List using () renaming
-  ( List to ♭List ; [] to []♭ ; _∷_ to _∷♭_ ; _++_ to _++♭_ ; lookup to lookup♭ ; length to length♭ )
+  ( List to ♭List ; [] to []♭ ; _∷_ to _∷♭_ ; _++_ to _++♭_ ; lookup to lookup♭ ; length to length♭ ; map to ♭map )
 open import FRP.JS.Maybe using ( Maybe ; just ; nothing )
 open import FRP.JS.Nat using ( zero ; suc ) renaming ( _+_ to _+♭_ )
 open import FRP.JS.Model.DNat using ( ℕ ; ♯0 ; _+_ ; iso-resp-+ ) renaming 
@@ -40,7 +40,7 @@ record List (A : Set) : Set where
 
 open List public
 
--- Convert any list into a Seq and back
+-- Convert any ♭List into a List and back
 
 ♯ : ∀ {A} → ♭List A → List A
 ♯ as = list 
@@ -51,6 +51,11 @@ open List public
 
 ♭ : ∀ {A} → List A → ♭List A
 ♭ (list n f n✓ f✓) = f []♭
+
+-- Map
+
+map : ∀ {A B} → (A → B) → List A → List B
+map f as = ♯ (♭map f (♭ as))
 
 -- Empty list
 
@@ -242,6 +247,11 @@ _≫_ as {bs} (n , n✓) = ((length as + n) , lookup₂ as bs n n✓)
 index-inj : ∀ {A} (a : A) {as} (a∈as₁ a∈as₂ : a ∈ as) → 
   (index a∈as₁ ≡ index a∈as₂) → (a∈as₁ ≡ a∈as₂)
 index-inj a (m , m✓) (.m , n✓) refl = refl
+
+-- Membership of empty list
+
+absurd : ∀ {β} {A} {B : Set β} {a : A} → (a ∈ []) → B
+absurd (n , ())
 
 -- Membership of singleton
 
