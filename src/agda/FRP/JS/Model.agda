@@ -21,6 +21,9 @@ module FRP.JS.Model where
 data _≡_ {α} {A : Set α} (a : A) : A → Set α where
   refl : a ≡ a
 
+sym : ∀ {α} {A : Set α} {a b : A} → (a ≡ b) → (b ≡ a)
+sym refl = refl
+
 trans : ∀ {α} {A : Set α} {a b c : A} → (a ≡ b) → (b ≡ c) → (a ≡ c)
 trans refl refl = refl
 
@@ -151,6 +154,11 @@ struct-apply K L refl ℜ refl refl ℑ refl = refl
 struct-cast : ∀ {α A B C D} (ℜ : set α ∋ B ↔ D) (A≡B : A ≡ B) (C≡D : C ≡ D) {a c} →
   struct (set α) A≡B ℜ C≡D a c → ℜ (cast A≡B a) (cast C≡D c)
 struct-cast ℜ refl refl aℜc = aℜc
+
+struct-sym : ∀ K {A B C D ℑ ℜ} → (A≡B : A ≡ B) → (C≡D : C ≡ D) →
+  (ℑ ≡ struct K A≡B ℜ C≡D) → 
+    (ℜ ≡ struct K (sym A≡B) ℑ (sym C≡D))
+struct-sym K refl refl refl = refl
 
 struct-trans : ∀ K {A B C D E F}
   (A≡B : A ≡ B) (B≡C : B ≡ C) (ℜ : K ∋ C ↔ F) (E≡F : E ≡ F) (D≡E : D ≡ E) →
@@ -610,6 +618,90 @@ substn⟦_⟧⟦_⟧² : ∀ {Σ K L} (T : Typ (L ∷ Σ) K) (U : Typ Σ L) {As 
     struct K (substn⟦ T ⟧⟦ U ⟧ As) (T⟦ substn T U ⟧² ℜs) (substn⟦ T ⟧⟦ U ⟧ Bs)
 substn⟦ T ⟧⟦ U ⟧² = substn+ [] ⟦ T ⟧⟦ U ⟧² tt
 
+-- Eta-beta equivalence on types
+
+data _∋_≣_ {Σ} : ∀ K → Typ Σ K → Typ Σ K → Set where
+  abs : ∀ K {L T U} → (L ∋ T ≣ U) → ((K ⇒ L) ∋ abs K T ≣ abs K U)
+  app : ∀ {K L F G T U} → ((K ⇒ L) ∋ F ≣ G) → (K ∋ T ≣ U) → (L ∋ app F T ≣ app G U)
+  beta : ∀ {K L} T U → (L ∋ app (abs K T) U ≣ substn T U)
+  eta : ∀ {K L} T → ((K ⇒ L) ∋ T ≣ abs K (app (weaken (skip K id) T) tvar₀))
+  ≣-refl : ∀ {K T} → (K ∋ T ≣ T)
+  ≣-sym : ∀ {K T U} → (K ∋ T ≣ U) → (K ∋ U ≣ T)
+  ≣-trans : ∀ {K T U V} → (K ∋ T ≣ U) → (K ∋ U ≣ V) → (K ∋ T ≣ V)
+
+≣⟦_⟧ : ∀ {Σ K} {T U : Typ Σ K} → (K ∋ T ≣ U) → ∀ As → T⟦ T ⟧ As ≡ T⟦ U ⟧ As
+≣⟦ abs K T≣U ⟧       As = ext (λ A → ≣⟦ T≣U ⟧ (A , As))
+≣⟦ app F≣G T≣U ⟧     As = apply (≣⟦ F≣G ⟧ As) (≣⟦ T≣U ⟧ As)
+≣⟦ beta T U ⟧        As = substn⟦ T ⟧⟦ U ⟧ As
+≣⟦ eta {K} T ⟧       As = ext (λ A → apply (weaken⟦ T ⟧ (skip K id) (A , As)) refl)
+≣⟦ ≣-refl ⟧          As = refl
+≣⟦ ≣-sym T≣U ⟧       As = sym (≣⟦ T≣U ⟧ As)
+≣⟦ ≣-trans T≣U U≣V ⟧ As = trans (≣⟦ T≣U ⟧ As) (≣⟦ U≣V ⟧ As)
+
+≣⟦_⟧² : ∀ {Σ K} {T U : Typ Σ K} (T≣U : K ∋ T ≣ U) {As Bs} (ℜs : Σ ∋ As ↔* Bs) → 
+  T⟦ T ⟧² ℜs ≡ struct K (≣⟦ T≣U ⟧ As) (T⟦ U ⟧² ℜs) (≣⟦ T≣U ⟧ Bs)
+≣⟦ abs K {L} {T} {U} T≣U ⟧² {As} {Bs} ℜs = 
+  iext (λ A → iext (λ B → ext (λ ℜ → begin
+    T⟦ T ⟧² (ℜ , ℜs)
+  ≡⟨ ≣⟦ T≣U ⟧² (ℜ , ℜs) ⟩
+    struct L (≣⟦ T≣U ⟧ (A , As)) (T⟦ U ⟧² (ℜ , ℜs)) (≣⟦ T≣U ⟧ (B , Bs))
+  ≡⟨ struct-ext K L (λ A → ≣⟦ T≣U ⟧ (A , As)) (λ ℜ' → T⟦ U ⟧² (ℜ' , ℜs)) (λ B → ≣⟦ T≣U ⟧ (B , Bs)) ℜ ⟩
+    struct (K ⇒ L) (≣⟦ abs K T≣U ⟧ As) (T⟦ abs K U ⟧² ℜs) (≣⟦ abs K T≣U ⟧ Bs) ℜ
+  ∎)))
+≣⟦ app {K} {L} {F} {G} {T} {U} F≣G T≣U ⟧² {As} {Bs} ℜs = 
+  begin
+    T⟦ app F T ⟧² ℜs
+  ≡⟨ cong (T⟦ F ⟧² ℜs) (≣⟦ T≣U ⟧² ℜs) ⟩
+    T⟦ F ⟧² ℜs (struct K (≣⟦ T≣U ⟧ As) (T⟦ U ⟧² ℜs) (≣⟦ T≣U ⟧ Bs))
+  ≡⟨ cong (λ X → X (struct K (≣⟦ T≣U ⟧ As) (T⟦ U ⟧² ℜs) (≣⟦ T≣U ⟧ Bs)))
+       (≣⟦ F≣G ⟧² ℜs) ⟩
+    struct (K ⇒ L) (≣⟦ F≣G ⟧ As) (T⟦ G ⟧² ℜs) (≣⟦ F≣G ⟧ Bs)
+      (struct K (≣⟦ T≣U ⟧ As) (T⟦ U ⟧² ℜs) (≣⟦ T≣U ⟧ Bs))
+  ≡⟨ struct-apply K L
+       (≣⟦ F≣G ⟧ As) (T⟦ G ⟧² ℜs) (≣⟦ F≣G ⟧ Bs)
+       (≣⟦ T≣U ⟧ As) (T⟦ U ⟧² ℜs) (≣⟦ T≣U ⟧ Bs) ⟩
+    struct L (≣⟦ app F≣G T≣U ⟧ As) (T⟦ app G U ⟧² ℜs) (≣⟦ app F≣G T≣U ⟧ Bs)
+  ∎
+≣⟦ beta T U ⟧² ℜs = substn⟦ T ⟧⟦ U ⟧² ℜs
+≣⟦ eta {K} {L} T ⟧² {As} {Bs} ℜs = iext (λ A → iext (λ B → ext (λ ℜ → 
+  begin
+    T⟦ T ⟧² ℜs ℜ
+  ≡⟨ cong (λ X → X ℜ) (weaken⟦ T ⟧² (skip K id) (ℜ , ℜs)) ⟩
+    struct (K ⇒ L) 
+      (weaken⟦ T ⟧ (skip K id) (A , As))
+      (T⟦ weaken (skip K id) T ⟧² (ℜ , ℜs))
+      (weaken⟦ T ⟧ (skip K id) (B , Bs)) ℜ
+  ≡⟨ struct-apply K L 
+       (weaken⟦ T ⟧ (skip K id) (A , As)) 
+       (T⟦ weaken (skip K id) T ⟧² (ℜ , ℜs)) 
+       (weaken⟦ T ⟧ (skip K id) (B , Bs)) refl ℜ refl ⟩
+    struct L 
+      (apply (weaken⟦ T ⟧ (skip K id) (A , As)) refl)
+      (T⟦ weaken (skip K id) T ⟧² (ℜ , ℜs) ℜ)
+      (apply (weaken⟦ T ⟧ (skip K id) (B , Bs)) refl)
+  ≡⟨ struct-ext K L
+       (λ A → apply (weaken⟦ T ⟧ (skip K id) (A , As)) refl) 
+       (λ ℜ → T⟦ weaken (skip K id) T ⟧² (ℜ , ℜs) ℜ) 
+       (λ B → apply (weaken⟦ T ⟧ (skip K id) (B , Bs)) refl) ℜ ⟩
+    struct (K ⇒ L) 
+      (≣⟦ eta T ⟧ As)
+      (T⟦ abs K (app (weaken (skip K id) T) (var zero)) ⟧² ℜs)
+      (≣⟦ eta T ⟧ Bs) ℜ
+  ∎)))
+≣⟦ ≣-refl ⟧² ℜs = refl
+≣⟦ ≣-sym {K} {T} {U} T≣U ⟧² {As} {Bs} ℜs = 
+  struct-sym K (≣⟦ T≣U ⟧ As) (≣⟦ T≣U ⟧ Bs) (≣⟦ T≣U ⟧² ℜs)
+≣⟦ ≣-trans {K} {T} {U} {V} T≣U U≣V ⟧² {As} {Bs} ℜs =
+  begin
+    T⟦ T ⟧² ℜs
+  ≡⟨ ≣⟦ T≣U ⟧² ℜs ⟩
+    struct K (≣⟦ T≣U ⟧ As) (T⟦ U ⟧² ℜs) (≣⟦ T≣U ⟧ Bs)
+  ≡⟨ cong (λ X → struct K (≣⟦ T≣U ⟧ As) X (≣⟦ T≣U ⟧ Bs)) (≣⟦ U≣V ⟧² ℜs) ⟩
+    struct K (≣⟦ T≣U ⟧ As) (struct K (≣⟦ U≣V ⟧ As) (T⟦ V ⟧² ℜs) (≣⟦ U≣V ⟧ Bs)) (≣⟦ T≣U ⟧ Bs)
+  ≡⟨ struct-trans K (≣⟦ T≣U ⟧ As) (≣⟦ U≣V ⟧ As) (T⟦ V ⟧² ℜs) (≣⟦ U≣V ⟧ Bs) (≣⟦ T≣U ⟧ Bs) ⟩
+    struct K (≣⟦ ≣-trans T≣U U≣V ⟧ As) (T⟦ V ⟧² ℜs) (≣⟦ ≣-trans T≣U U≣V ⟧ Bs)
+  ∎
+
 -- Variables
 
 data Var {Σ : Kinds} {α} (T : Typ Σ (set α)) : Typs Σ → Set where
@@ -662,6 +754,7 @@ data Exp {Σ : Kinds} (Γ : Typs Σ) : ∀ {α} → Typ Σ (set α) → Set wher
   var : ∀ {α} {T : Typ Σ (set α)} → Var T Γ → Exp Γ T
   tabs : ∀ K {α} {T : Typ (K ∷ Σ) (set α)} (M : Exp (weakens (skip K id) Γ) T) → Exp Γ (Π K T)
   tapp : ∀ {K α} {T : Typ (K ∷ Σ) (set α)} → Exp Γ (Π K T) → ∀ U → Exp Γ (substn T U)
+  eq : ∀ {α T U} → (set α ∋ T ≣ U) → (Exp Γ T) → (Exp Γ U)
 
 ctxt : ∀ {Σ Γ α T} → Exp {Σ} Γ {α} T → Typs Σ
 ctxt {Σ} {Γ} M = Γ
@@ -676,6 +769,7 @@ M⟦ tabs K M ⟧ As as = λ A →
   M⟦ M ⟧ (A , As) (weakens⟦ ctxt (tabs K M) ⟧ (skip K id) (A , As) as)
 M⟦ tapp {T = T} M U ⟧ As as = 
   cast (substn⟦ T ⟧⟦ U ⟧ As) (M⟦ M ⟧ As as (T⟦ U ⟧ As))
+M⟦ eq T≣U M ⟧ As as = cast (≣⟦ T≣U ⟧ As) (M⟦ M ⟧ As as)
 
 M⟦_⟧² : ∀ {Σ} {Γ : Typs Σ} {α} {T : Typ Σ (set α)} (M : Exp Γ T) → 
   ∀ {As Bs} (ℜs : Σ ∋ As ↔* Bs) {as bs} → 
@@ -689,6 +783,8 @@ M⟦ tabs K M ⟧² ℜs asℜbs = λ ℜ →
 M⟦ tapp {T = T} M U ⟧² ℜs asℜbs = 
   struct-cast (T⟦ substn T U ⟧² ℜs) (substn⟦ T ⟧⟦ U ⟧ _) (substn⟦ T ⟧⟦ U ⟧ _)
     (cast² (substn⟦ T ⟧⟦ U ⟧² ℜs) (M⟦ M ⟧² ℜs asℜbs (T⟦ U ⟧² ℜs)))
+M⟦ eq {α} {T} {U} T≣U M ⟧² {As} {Bs} ℜs asℜbs = 
+  struct-cast (T⟦ U ⟧² ℜs) (≣⟦ T≣U ⟧ As) (≣⟦ T≣U ⟧ Bs) (cast² (≣⟦ T≣U ⟧² ℜs) (M⟦ M ⟧² ℜs asℜbs))
 
 -- Types with a chosen free world variable
 
