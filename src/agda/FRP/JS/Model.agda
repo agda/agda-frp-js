@@ -152,6 +152,12 @@ struct-cast : ∀ {α A B C D} (ℜ : set α ∋ B ↔ D) (A≡B : A ≡ B) (C�
   struct (set α) A≡B ℜ C≡D a c → ℜ (cast A≡B a) (cast C≡D c)
 struct-cast ℜ refl refl aℜc = aℜc
 
+struct-trans : ∀ K {A B C D E F}
+  (A≡B : A ≡ B) (B≡C : B ≡ C) (ℜ : K ∋ C ↔ F) (E≡F : E ≡ F) (D≡E : D ≡ E) →
+    struct K A≡B (struct K B≡C ℜ E≡F) D≡E ≡
+      struct K (trans A≡B B≡C) ℜ (trans D≡E E≡F)
+struct-trans K refl refl ℜ refl refl = refl
+
 -- Type contexts
 
 infixr 4 _∷_
@@ -190,6 +196,21 @@ data _⊑_ : Kinds → Kinds → Set where
 ⊑⟦ id ⟧²         ℜs       = ℜs
 ⊑⟦ keep K Σ⊑Υ ⟧² (ℜ , ℜs) = (ℜ , ⊑⟦ Σ⊑Υ ⟧² ℜs)
 ⊑⟦ skip K Σ⊑Υ ⟧² (ℜ , ℜs) = ⊑⟦ Σ⊑Υ ⟧² ℜs
+
+-- Concatenation of type contexts
+
+_++_ : Kinds → Kinds → Kinds
+[]      ++ Υ = Υ
+(K ∷ Σ) ++ Υ = K ∷ (Σ ++ Υ)
+
+_∋_++_∋_ : ∀ Σ → Σ⟦ Σ ⟧ → ∀ Υ → Σ⟦ Υ ⟧ → Σ⟦ Σ ++ Υ ⟧
+[]      ∋ tt       ++ Υ ∋ Bs = Bs
+(K ∷ Σ) ∋ (A , As) ++ Υ ∋ Bs = (A , (Σ ∋ As ++ Υ ∋ Bs))
+
+_∋_++²_∋_ : ∀ Σ {As Bs} → (Σ ∋ As ↔* Bs) → ∀ Υ {Cs Ds} → (Υ ∋ Cs ↔* Ds) → 
+  ((Σ ++ Υ) ∋ (Σ ∋ As ++ Υ ∋ Cs) ↔* (Σ ∋ Bs ++ Υ ∋ Ds))
+[]      ∋ tt       ++² Υ ∋ ℑs = ℑs
+(K ∷ Σ) ∋ (ℜ , ℜs) ++² Υ ∋ ℑs = (ℜ , (Σ ∋ ℜs ++² Υ ∋ ℑs))
 
 -- Type variables
 
@@ -439,6 +460,156 @@ weakens⟦ T ∷ Γ ⟧² Σ⊑Υ ℜs (aℜb , asℜbs)
         (weaken⟦ T ⟧ Σ⊑Υ _) (weaken⟦ T ⟧ Σ⊑Υ _) (cast² (weaken⟦ T ⟧² Σ⊑Υ ℜs) aℜb)
     , weakens⟦ Γ ⟧² Σ⊑Υ ℜs asℜbs)
 
+-- Susbtitution on type variables under a context
+
+τsubstn+ : ∀ Σ {Υ K L} → TVar K (Σ ++ (L ∷ Υ)) → Typ Υ L → Typ (Σ ++ Υ) K
+τsubstn+ []      zero    U = U
+τsubstn+ []      (suc τ) U = var τ
+τsubstn+ (K ∷ Σ) zero    U = var zero
+τsubstn+ (K ∷ Σ) (suc τ) U = weaken (skip K id) (τsubstn+ Σ τ U)
+
+τsubstn+_⟦_⟧⟦_⟧ : ∀ Σ {Υ K L} (τ : TVar K (Σ ++ (L ∷ Υ))) (U : Typ Υ L) 
+  (As : Σ⟦ Σ ⟧) (Bs : Σ⟦ Υ ⟧) →
+    τ⟦ τ ⟧ (Σ ∋ As ++ (L ∷ Υ) ∋ (T⟦ U ⟧ Bs , Bs)) ≡ 
+      T⟦ τsubstn+ Σ τ U ⟧ (Σ ∋ As ++ Υ ∋ Bs)
+τsubstn+ []      ⟦ zero  ⟧⟦ U ⟧ tt       Bs = refl
+τsubstn+ []      ⟦ suc τ ⟧⟦ U ⟧ tt       Bs = refl
+τsubstn+ (K ∷ Σ) ⟦ zero  ⟧⟦ U ⟧ (A , As) Bs = refl
+τsubstn+ (K ∷ Σ) ⟦ suc τ ⟧⟦ U ⟧ (A , As) Bs = trans 
+  (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ As Bs) 
+  (weaken⟦ τsubstn+ Σ τ U ⟧ (skip K id) (A , (Σ ∋ As ++ _ ∋ Bs)))
+
+τsubstn+_⟦_⟧⟦_⟧² : ∀ Σ {Υ L K} (τ : TVar K (Σ ++ (L ∷ Υ))) (U : Typ Υ L) {As Bs Cs Ds} 
+  (ℜs : Σ ∋ As ↔* Bs) → (ℑs : Υ ∋ Cs ↔* Ds) →
+    τ⟦ τ ⟧² (Σ ∋ ℜs ++² (L ∷ Υ) ∋ (T⟦ U ⟧² ℑs , ℑs)) ≡ 
+      struct K 
+        (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ As Cs) 
+        (T⟦ τsubstn+ Σ τ U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs) )
+        (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ Bs Ds)
+τsubstn+ []      ⟦ zero  ⟧⟦ U ⟧² tt       ℑs = refl
+τsubstn+ []      ⟦ suc τ ⟧⟦ U ⟧² tt       ℑs = refl
+τsubstn+ (J ∷ Σ) ⟦ zero  ⟧⟦ U ⟧² (ℜ , ℜs) ℑs = refl
+τsubstn+_⟦_⟧⟦_⟧² (J ∷ Σ) {Υ} {L} {K} (suc τ) U {A , As} {B , Bs} {Cs} {Ds} (ℜ , ℜs) ℑs = 
+  begin
+    τ⟦ τ ⟧² (Σ ∋ ℜs ++² (L ∷ Υ) ∋ (T⟦ U ⟧² ℑs , ℑs))
+  ≡⟨ τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧² ℜs ℑs ⟩
+    struct K 
+      (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ As Cs)
+      (T⟦ τsubstn+ Σ τ U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs))
+      (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ Bs Ds)
+  ≡⟨ cong (λ X → struct K (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ As Cs) X (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ Bs Ds)) 
+       (weaken⟦ τsubstn+ Σ τ U ⟧² (skip J id) (ℜ , (Σ ∋ ℜs ++² Υ ∋ ℑs))) ⟩
+    struct K 
+      (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ As Cs) 
+      (struct K
+        (weaken⟦ τsubstn+ Σ τ U ⟧ (skip J id) (A , (Σ ∋ As ++ Υ ∋ Cs))) 
+        (T⟦ weaken (skip J id) (τsubstn+ Σ τ U) ⟧² (ℜ , (Σ ∋ ℜs ++² Υ ∋ ℑs))) 
+        (weaken⟦ τsubstn+ Σ τ U ⟧ (skip J id) (B , (Σ ∋ Bs ++ Υ ∋ Ds)))) 
+      (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ Bs Ds)
+  ≡⟨ struct-trans K 
+       (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ As Cs) 
+       (weaken⟦ τsubstn+ Σ τ U ⟧ (skip J id) (A , (Σ ∋ As ++ Υ ∋ Cs)))
+       (T⟦ weaken (skip J id) (τsubstn+ Σ τ U) ⟧² (ℜ , (Σ ∋ ℜs ++² Υ ∋ ℑs)))
+       (weaken⟦ τsubstn+ Σ τ U ⟧ (skip J id) (B , (Σ ∋ Bs ++ Υ ∋ Ds)))
+       (τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ Bs Ds) ⟩
+    struct K 
+      (τsubstn+ (J ∷ Σ) ⟦ suc τ ⟧⟦ U ⟧ (A , As) Cs) 
+      (T⟦ τsubstn+ (J ∷ Σ) (suc τ) U ⟧² (ℜ , (Σ ∋ ℜs ++² Υ ∋ ℑs)) )
+      (τsubstn+ (J ∷ Σ) ⟦ suc τ ⟧⟦ U ⟧ (B , Bs) Ds)    
+  ∎
+
+-- Substitution on types under a context
+
+substn+ : ∀ Σ {Υ K L} → Typ (Σ ++ (L ∷ Υ)) K → Typ Υ L → Typ (Σ ++ Υ) K
+substn+ Σ (const C) U = const C
+substn+ Σ (abs K T) U = abs K (substn+ (K ∷ Σ) T U)
+substn+ Σ (app S T) U = app (substn+ Σ S U) (substn+ Σ T U)
+substn+ Σ (var τ)   U = τsubstn+ Σ τ U
+
+substn+_⟦_⟧⟦_⟧ : ∀ Σ {Υ K L} (T : Typ (Σ ++ (L ∷ Υ)) K) (U : Typ Υ L) 
+  (As : Σ⟦ Σ ⟧) (Bs : Σ⟦ Υ ⟧) →
+    T⟦ T ⟧ (Σ ∋ As ++ (L ∷ Υ) ∋ (T⟦ U ⟧ Bs , Bs)) ≡ 
+      T⟦ substn+ Σ T U ⟧ (Σ ∋ As ++ Υ ∋ Bs)
+substn+ Σ ⟦ const C ⟧⟦ U ⟧ As Bs = refl
+substn+ Σ ⟦ abs K T ⟧⟦ U ⟧ As Bs = ext (λ A → substn+ K ∷ Σ ⟦ T ⟧⟦ U ⟧ (A , As) Bs)
+substn+ Σ ⟦ app S T ⟧⟦ U ⟧ As Bs = apply (substn+ Σ ⟦ S ⟧⟦ U ⟧ As Bs) (substn+ Σ ⟦ T ⟧⟦ U ⟧ As Bs)
+substn+ Σ ⟦ var τ   ⟧⟦ U ⟧ As Bs = τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧ As Bs
+
+substn+_⟦_⟧⟦_⟧² : ∀ Σ {Υ L K} (T : Typ (Σ ++ (L ∷ Υ)) K) (U : Typ Υ L) {As Bs Cs Ds} 
+  (ℜs : Σ ∋ As ↔* Bs) → (ℑs : Υ ∋ Cs ↔* Ds) →
+    T⟦ T ⟧² (Σ ∋ ℜs ++² (L ∷ Υ) ∋ (T⟦ U ⟧² ℑs , ℑs)) ≡ 
+      struct K 
+        (substn+ Σ ⟦ T ⟧⟦ U ⟧ As Cs) 
+        (T⟦ substn+ Σ T U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs) )
+        (substn+ Σ ⟦ T ⟧⟦ U ⟧ Bs Ds)
+substn+ Σ ⟦ const C ⟧⟦ U ⟧² ℜs ℑs = refl
+substn+_⟦_⟧⟦_⟧² Σ {Υ} {L} (abs J {K} T) U {As} {Bs} {Cs} {Ds} ℜs ℑs = 
+  iext (λ A → iext (λ B → ext (λ ℜ → begin
+    T⟦ abs J T ⟧² (Σ ∋ ℜs ++² (L ∷ Υ) ∋ (T⟦ U ⟧² ℑs , ℑs)) ℜ
+  ≡⟨ substn+ (J ∷ Σ) ⟦ T ⟧⟦ U ⟧² (ℜ , ℜs) ℑs ⟩
+    struct K 
+      (substn+ J ∷ Σ ⟦ T ⟧⟦ U ⟧ (A , As) Cs) 
+      (T⟦ substn+ (J ∷ Σ) T U ⟧² ((J ∷ Σ) ∋ (ℜ , ℜs) ++² Υ ∋ ℑs)) 
+      (substn+ J ∷ Σ ⟦ T ⟧⟦ U ⟧ (B , Bs) Ds)
+  ≡⟨ struct-ext J K 
+       (λ A → substn+ J ∷ Σ ⟦ T ⟧⟦ U ⟧ (A , As) Cs) 
+       (λ ℜ → T⟦ substn+ (J ∷ Σ) T U ⟧² ((J ∷ Σ) ∋ ℜ , ℜs ++² Υ ∋ ℑs))
+       (λ B → substn+ J ∷ Σ ⟦ T ⟧⟦ U ⟧ (B , Bs) Ds) ℜ ⟩
+    struct (J ⇒ K) 
+      (substn+ Σ ⟦ abs J T ⟧⟦ U ⟧ As Cs) 
+      (T⟦ substn+ Σ (abs J T) U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs)) 
+      (substn+ Σ ⟦ abs J T ⟧⟦ U ⟧ Bs Ds) ℜ
+  ∎)))
+substn+_⟦_⟧⟦_⟧² Σ {Υ} {L} (app {J} {K} S T) U {As} {Bs} {Cs} {Ds} ℜs ℑs = 
+  begin
+    T⟦ app S T ⟧² (Σ ∋ ℜs ++² L ∷ Υ ∋ (T⟦ U ⟧² ℑs , ℑs))
+  ≡⟨ cong (T⟦ S ⟧² (Σ ∋ ℜs ++² L ∷ Υ ∋ (T⟦ U ⟧² ℑs , ℑs))) (substn+ Σ ⟦ T ⟧⟦ U ⟧² ℜs ℑs) ⟩
+    T⟦ S ⟧² (Σ ∋ ℜs ++² L ∷ Υ ∋ (T⟦ U ⟧² ℑs , ℑs))
+      (struct J 
+         (substn+ Σ ⟦ T ⟧⟦ U ⟧ As Cs)
+         (T⟦ substn+ Σ T U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs))
+         (substn+ Σ ⟦ T ⟧⟦ U ⟧ Bs Ds))
+  ≡⟨ cong (λ X → X (struct J 
+       (substn+ Σ ⟦ T ⟧⟦ U ⟧ As Cs)
+       (T⟦ substn+ Σ T U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs))
+       (substn+ Σ ⟦ T ⟧⟦ U ⟧ Bs Ds))) 
+       (substn+ Σ ⟦ S ⟧⟦ U ⟧² ℜs ℑs) ⟩
+    struct (J ⇒ K) 
+      (substn+ Σ ⟦ S ⟧⟦ U ⟧ As Cs) 
+      (T⟦ substn+ Σ S U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs))
+      (substn+ Σ ⟦ S ⟧⟦ U ⟧ Bs Ds) 
+      (struct J 
+         (substn+ Σ ⟦ T ⟧⟦ U ⟧ As Cs)
+         (T⟦ substn+ Σ T U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs))
+         (substn+ Σ ⟦ T ⟧⟦ U ⟧ Bs Ds))
+  ≡⟨ struct-apply J K 
+       (substn+ Σ ⟦ S ⟧⟦ U ⟧ As Cs) 
+       (T⟦ substn+ Σ S U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs)) 
+       (substn+ Σ ⟦ S ⟧⟦ U ⟧ Bs Ds) 
+       (substn+ Σ ⟦ T ⟧⟦ U ⟧ As Cs)
+       (T⟦ substn+ Σ T U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs))
+       (substn+ Σ ⟦ T ⟧⟦ U ⟧ Bs Ds) ⟩
+    struct K 
+      (substn+ Σ ⟦ app S T ⟧⟦ U ⟧ As Cs)
+      (T⟦ substn+ Σ (app S T) U ⟧² (Σ ∋ ℜs ++² Υ ∋ ℑs))
+      (substn+ Σ ⟦ app S T ⟧⟦ U ⟧ Bs Ds)
+  ∎
+substn+ Σ ⟦ var τ ⟧⟦ U ⟧² ℜs ℑs = τsubstn+ Σ ⟦ τ ⟧⟦ U ⟧² ℜs ℑs
+
+-- Substitution on types
+
+substn : ∀ {Σ K L} → Typ (L ∷ Σ) K → Typ Σ L → Typ Σ K
+substn = substn+ []
+
+substn⟦_⟧⟦_⟧ : ∀ {Σ K L} (T : Typ (L ∷ Σ) K) (U : Typ Σ L) (As : Σ⟦ Σ ⟧)→
+  T⟦ T ⟧ (T⟦ U ⟧ As , As) ≡ T⟦ substn T U ⟧ As
+substn⟦ T ⟧⟦ U ⟧ = substn+ [] ⟦ T ⟧⟦ U ⟧ tt
+
+substn⟦_⟧⟦_⟧² : ∀ {Σ K L} (T : Typ (L ∷ Σ) K) (U : Typ Σ L) {As Bs} (ℜs : Σ ∋ As ↔* Bs) →
+  T⟦ T ⟧² (T⟦ U ⟧² ℜs , ℜs) ≡ 
+    struct K (substn⟦ T ⟧⟦ U ⟧ As) (T⟦ substn T U ⟧² ℜs) (substn⟦ T ⟧⟦ U ⟧ Bs)
+substn⟦ T ⟧⟦ U ⟧² = substn+ [] ⟦ T ⟧⟦ U ⟧² tt
+
 -- Variables
 
 data Var {Σ : Kinds} {α} (T : Typ Σ (set α)) : Typs Σ → Set where
@@ -490,6 +661,7 @@ data Exp {Σ : Kinds} (Γ : Typs Σ) : ∀ {α} → Typ Σ (set α) → Set wher
   app : ∀ {α β} {T : Typ Σ (set α)} {U : Typ Σ (set β)} (M : Exp Γ (T ⊸ U)) (N : Exp Γ T) → Exp Γ U
   var : ∀ {α} {T : Typ Σ (set α)} → Var T Γ → Exp Γ T
   tabs : ∀ K {α} {T : Typ (K ∷ Σ) (set α)} (M : Exp (weakens (skip K id) Γ) T) → Exp Γ (Π K T)
+  tapp : ∀ {K α} {T : Typ (K ∷ Σ) (set α)} → Exp Γ (Π K T) → ∀ U → Exp Γ (substn T U)
 
 ctxt : ∀ {Σ Γ α T} → Exp {Σ} Γ {α} T → Typs Σ
 ctxt {Σ} {Γ} M = Γ
@@ -502,6 +674,8 @@ M⟦ app M N ⟧  As as = M⟦ M ⟧ As as (M⟦ N ⟧ As as)
 M⟦ var x ⟧    As as = x⟦ x ⟧ As as
 M⟦ tabs K M ⟧ As as = λ A → 
   M⟦ M ⟧ (A , As) (weakens⟦ ctxt (tabs K M) ⟧ (skip K id) (A , As) as)
+M⟦ tapp {T = T} M U ⟧ As as = 
+  cast (substn⟦ T ⟧⟦ U ⟧ As) (M⟦ M ⟧ As as (T⟦ U ⟧ As))
 
 M⟦_⟧² : ∀ {Σ} {Γ : Typs Σ} {α} {T : Typ Σ (set α)} (M : Exp Γ T) → 
   ∀ {As Bs} (ℜs : Σ ∋ As ↔* Bs) {as bs} → 
@@ -512,6 +686,9 @@ M⟦ app M N ⟧²  ℜs asℜbs = M⟦ M ⟧² ℜs asℜbs (M⟦ N ⟧² ℜs 
 M⟦ var x  ⟧²   ℜs asℜbs = x⟦ x ⟧² ℜs asℜbs
 M⟦ tabs K M ⟧² ℜs asℜbs = λ ℜ → 
   M⟦ M ⟧² (ℜ , ℜs) (weakens⟦ ctxt (tabs K M) ⟧² (skip K id) (ℜ , ℜs) asℜbs)
+M⟦ tapp {T = T} M U ⟧² ℜs asℜbs = 
+  struct-cast (T⟦ substn T U ⟧² ℜs) (substn⟦ T ⟧⟦ U ⟧ _) (substn⟦ T ⟧⟦ U ⟧ _)
+    (cast² (substn⟦ T ⟧⟦ U ⟧² ℜs) (M⟦ M ⟧² ℜs asℜbs (T⟦ U ⟧² ℜs)))
 
 -- Types with a chosen free world variable
 
