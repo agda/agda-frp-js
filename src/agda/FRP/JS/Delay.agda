@@ -8,8 +8,9 @@ open import FRP.JS.Maybe using ( Maybe )
 
 module FRP.JS.Delay where
 
-data Delay : Set where
-  _ms : ℕ → Delay
+record Delay : Set where
+  constructor _ms
+  field toℕ : ℕ
 
 {-# COMPILED_JS Delay function(x,v) { return v["_ms"](x); } #-}
 {-# COMPILED_JS _ms function(d) { return d; } #-}

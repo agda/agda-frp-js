@@ -60,7 +60,7 @@ show x = showz (+ x)
 -_ x = (+ 0) - (+ x)
 
 _≤_ : ℕ → ℕ → Bool
-x ≤ y = (x < y) ∨ (x ≟ y)
+x ≤ y = not (y < x)
 
 _≠_ : ℕ → ℕ → Bool
 x ≠ y = not (x ≟ y)

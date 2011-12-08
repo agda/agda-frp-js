@@ -1,6 +1,8 @@
 open import FRP.JS.Level using ( Level ; _⊔_ ) renaming ( zero to o ; suc to ↑ )
-open import FRP.JS.Time using ( Time ; _≟_ ; _≤_ ; _<_ )
-open import FRP.JS.Bool using ( true ; false )
+open import FRP.JS.Time using ( Time ; epoch ; _≟_ ; _≤_ ; _<_ )
+open import FRP.JS.Delay using ( Delay ; _ms )
+open import FRP.JS.Bool using ( true ; false ; not )
+open import FRP.JS.Nat using () renaming ( _<_ to _<n_ )
 open import FRP.JS.True using ( True ; tt )
 
 module FRP.JS.Model where
@@ -725,26 +727,54 @@ data Const {Σ : Kinds} : ∀ {α} → Typ Σ (set α) → Set where
   pair : ∀ {α β} → Const (Π (set α) (Π (set β) (tvar₁ ⊸ (tvar₀ ⊸ (tvar₁ ⊗ tvar₀)))))
   fst : ∀ {α β} → Const (Π (set α) (Π (set β) ((tvar₁ ⊗ tvar₀) ⊸ tvar₁)))
   snd : ∀ {α β} → Const (Π (set α) (Π (set β) ((tvar₁ ⊗ tvar₀) ⊸ tvar₀)))
-  leq-refl : Const (Π time (tvar₀ ≼ tvar₀))
-  leq-trans : Const (Π time (Π time (Π time ((tvar₂ ≼ tvar₁) ⊸ ((tvar₁ ≼ tvar₀) ⊸ (tvar₂ ≼ tvar₀))))))
+  ≼-refl : Const (Π time (tvar₀ ≼ tvar₀))
+  ≼-trans : Const (Π time (Π time (Π time ((tvar₂ ≼ tvar₁) ⊸ ((tvar₁ ≼ tvar₀) ⊸ (tvar₂ ≼ tvar₀))))))
+  ≼-absurd : ∀ {α} → Const (Π (set α) (Π time (Π time ((tvar₁ ≺ tvar₀) ⊸ ((tvar₀ ≼ tvar₁) ⊸ tvar₂)))))
+  ≼-case : ∀ {α} → Const (Π (set α) (Π time (Π time (((tvar₁ ≼ tvar₀) ⊸ tvar₂) ⊸ (((tvar₀ ≺ tvar₁) ⊸ tvar₂) ⊸ tvar₂)))))
+
+absurd : ∀ {α} {A : Set α} b → True b → True (not b) → A
+absurd true  tt ()
+absurd false () tt
+
+case : ∀ {α} {A : Set α} b → (True (not b) → A) → (True b → A) → A
+case true  f g = g tt
+case false f g = f tt
 
 c⟦_⟧ : ∀ {Σ} {α} {T : Typ Σ (set α)} → 
   Const T → (As : Σ⟦ Σ ⟧) → (T⟦ T ⟧ As)
-c⟦ pair ⟧      As = λ A B a b → (a , b)
-c⟦ fst ⟧       As = λ A B → proj₁
-c⟦ snd ⟧       As = λ A B → proj₂
-c⟦ leq-refl ⟧  As = ≤-refl
-c⟦ leq-trans ⟧ As = ≤-trans
+c⟦ pair ⟧     As = λ A B a b → (a , b)
+c⟦ fst ⟧      As = λ A B → proj₁
+c⟦ snd ⟧      As = λ A B → proj₂
+c⟦ ≼-refl ⟧   As = ≤-refl
+c⟦ ≼-trans ⟧  As = ≤-trans
+c⟦ ≼-absurd ⟧ As = λ A t u → absurd (t < u)
+c⟦ ≼-case ⟧   As = λ A t u → case (u < t)
+
+case² : ∀ {α} {A A′ : Set α} (ℜ : A → A′ → Set α) b →
+  ∀ {f f′} → (∀ b× → ℜ (f b×) (f′ b×)) →
+    ∀ {g g′} → (∀ b✓ → ℜ (g b✓) (g′ b✓)) →
+      ℜ (case b f g) (case b f′ g′)
+case² ℜ true  fℜf′ gℜg′ = gℜg′ tt
+case² ℜ false fℜf′ gℜg′ = fℜf′ tt
 
 c⟦_⟧² : ∀ {Σ} {α} {T : Typ Σ (set α)} (c : Const T) → 
   ∀ {As Bs} (ℜs : Σ ∋ As ↔* Bs) → 
     (T⟦ T ⟧² ℜs (c⟦ c ⟧ As) (c⟦ c ⟧ Bs))
-c⟦ pair ⟧²      ℜs = λ ℜ ℑ aℜb cℑd → (aℜb , cℑd)
-c⟦ fst ⟧²       ℜs = λ ℜ ℑ → proj₁
-c⟦ snd ⟧²       ℜs = λ ℜ ℑ → proj₂
-c⟦ leq-refl ⟧²  ℜs = _
-c⟦ leq-trans ⟧² ℜs = _
-
+c⟦ pair ⟧²       ℜs = λ ℜ ℑ aℜb cℑd → (aℜb , cℑd)
+c⟦ fst ⟧²        ℜs = λ ℜ ℑ → proj₁
+c⟦ snd ⟧²        ℜs = λ ℜ ℑ → proj₂
+c⟦ ≼-refl ⟧²     ℜs = _
+c⟦ ≼-trans ⟧²    ℜs = _
+c⟦ ≼-absurd ⟧²   ℜs = λ ℜ {t} t≡t {u} u≡u {t<u} tt {u≤t} tt → absurd (t < u) t<u u≤t
+c⟦ ≼-case {α} ⟧² ℜs = lemma where
+  lemma : ∀ {A A′ : Set α} (ℜ : A → A′ → Set α) →
+    ∀ {t t′} → (t ≡ t′) → ∀ {u u′} → (u ≡ u′) →
+      ∀ {f f′} → (∀ {t≤u t′≤u′} → ⊤ → ℜ (f t≤u) (f′ t′≤u′)) →
+        ∀ {g g′} → (∀ {u<t u′<t′} → ⊤ → ℜ (g u<t) (g′ u′<t′)) →
+          ℜ (case (u < t) f g) (case (u′ < t′) f′ g′)
+  lemma ℜ {t} refl {u} refl fℜf′ gℜg′ = 
+    case² ℜ (u < t) (λ t≤u → fℜf′ {t≤u} {t≤u} tt) (λ u<t → gℜg′ {u<t} {u<t} tt)
+  
 -- Expressions
 
 data Exp {Σ : Kinds} (Γ : Typs Σ) : ∀ {α} → Typ Σ (set α) → Set where
