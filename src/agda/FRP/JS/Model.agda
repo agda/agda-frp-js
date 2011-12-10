@@ -1,8 +1,6 @@
 open import FRP.JS.Level using ( Level ; _⊔_ ) renaming ( zero to o ; suc to ↑ )
-open import FRP.JS.Time using ( Time ; epoch ; _≟_ ; _≤_ ; _<_ )
-open import FRP.JS.Delay using ( Delay ; _ms )
-open import FRP.JS.Bool using ( true ; false ; not )
-open import FRP.JS.Nat using () renaming ( _<_ to _<n_ )
+open import FRP.JS.Time using ( Time ; _≤_ ; _<_ )
+open import FRP.JS.Bool using ( Bool ; true ; false ; not ; _≟_ ) 
 open import FRP.JS.True using ( True ; tt )
 
 module FRP.JS.Model where
@@ -87,6 +85,15 @@ _×²_ : ∀ {α β} {A C : Set α} {B D : Set β} →
 _→²_ : ∀ {α β} {A C : Set α} {B D : Set β} → 
   (A → C → Set α) → (B → D → Set β) → ((A → B) → (C → D) → Set (α ⊔ β))
 (ℜ →² ℑ) f g = ∀ {a b} → ℜ a b → ℑ (f a) (g b)
+
+-- Case on booleans
+
+data Case (c : Bool) : Set where
+  _,_ : ∀ b → True (b ≟ c) → Case c
+
+switch : ∀ b → Case b
+switch true  = (true , tt)
+switch false = (false , tt)
 
 -- Reactive sets
 
@@ -339,19 +346,12 @@ _⊸ʳ_ = app₂ funʳ
 always : ∀ {Σ α} → Typ Σ (set α ⇒ rset α)
 always {Σ} {α} = abs (set α) (abs time tvar₁)
 
-taut : ∀ {Σ α} → Typ Σ (rset α ⇒ set α)
-taut {Σ} {α} = abs (rset α) (Π time (app tvar₁ tvar₀))
+½interval : ∀ {Σ α} → Typ Σ (rset α ⇒ (time ⇒ (time ⇒ set α)))
+½interval {Σ} {α} = abs (rset α) (abs time (abs time (Π time 
+  ((tvar₂ ≺ tvar₀) ⊸ ((tvar₀ ≼ tvar₁) ⊸ app tvar₃ tvar₀)))))
 
-interval : ∀ {Σ α} → Typ Σ (rset α ⇒ (time ⇒ (time ⇒ set α)))
-interval {Σ} {α} = abs (rset α) (abs time (abs time (Π time 
-  ((tvar₂ ≼ tvar₀) ⊸ ((tvar₀ ≼ tvar₁) ⊸ app tvar₃ tvar₀)))))
-
-constreq : ∀ {Σ α β} → Typ Σ (rset α ⇒ (rset β ⇒ rset (α ⊔ β)))
-constreq {Σ} {α} {β} = abs (rset α) (abs (rset β) (abs time (Π time 
-  ((tvar₁ ≼ tvar₀) ⊸ (app (app (app interval tvar₃) tvar₁) tvar₀ ⊸ app tvar₂ tvar₀)))))
-
-_⊵_ : ∀ {Σ α β} → Typ Σ (rset α) → Typ Σ (rset β) → Typ Σ (rset (α ⊔ β))
-_⊵_ = app₂ constreq
+_⟨_,_] : ∀ {Σ α} → Typ Σ (rset α) → Typ Σ time → Typ Σ time → Typ Σ (set α)
+T ⟨ t , u ] = app (app (app ½interval T) t) u
 
 -- Contexts
 
@@ -736,9 +736,9 @@ absurd : ∀ {α} {A : Set α} b → True b → True (not b) → A
 absurd true  tt ()
 absurd false () tt
 
-case : ∀ {α} {A : Set α} b → (True (not b) → A) → (True b → A) → A
-case true  f g = g tt
-case false f g = f tt
+cond : ∀ {α} {A : Set α} b → (True (not b) → A) → (True b → A) → A
+cond true  f g = g tt
+cond false f g = f tt
 
 c⟦_⟧ : ∀ {Σ} {α} {T : Typ Σ (set α)} → 
   Const T → (As : Σ⟦ Σ ⟧) → (T⟦ T ⟧ As)
@@ -748,14 +748,14 @@ c⟦ snd ⟧      As = λ A B → proj₂
 c⟦ ≼-refl ⟧   As = ≤-refl
 c⟦ ≼-trans ⟧  As = ≤-trans
 c⟦ ≼-absurd ⟧ As = λ A t u → absurd (t < u)
-c⟦ ≼-case ⟧   As = λ A t u → case (u < t)
+c⟦ ≼-case ⟧   As = λ A t u → cond (u < t)
 
-case² : ∀ {α} {A A′ : Set α} (ℜ : A → A′ → Set α) b →
+cond² : ∀ {α} {A A′ : Set α} (ℜ : A → A′ → Set α) b →
   ∀ {f f′} → (∀ b× → ℜ (f b×) (f′ b×)) →
     ∀ {g g′} → (∀ b✓ → ℜ (g b✓) (g′ b✓)) →
-      ℜ (case b f g) (case b f′ g′)
-case² ℜ true  fℜf′ gℜg′ = gℜg′ tt
-case² ℜ false fℜf′ gℜg′ = fℜf′ tt
+      ℜ (cond b f g) (cond b f′ g′)
+cond² ℜ true  fℜf′ gℜg′ = gℜg′ tt
+cond² ℜ false fℜf′ gℜg′ = fℜf′ tt
 
 c⟦_⟧² : ∀ {Σ} {α} {T : Typ Σ (set α)} (c : Const T) → 
   ∀ {As Bs} (ℜs : Σ ∋ As ↔* Bs) → 
@@ -771,9 +771,9 @@ c⟦ ≼-case {α} ⟧² ℜs = lemma where
     ∀ {t t′} → (t ≡ t′) → ∀ {u u′} → (u ≡ u′) →
       ∀ {f f′} → (∀ {t≤u t′≤u′} → ⊤ → ℜ (f t≤u) (f′ t′≤u′)) →
         ∀ {g g′} → (∀ {u<t u′<t′} → ⊤ → ℜ (g u<t) (g′ u′<t′)) →
-          ℜ (case (u < t) f g) (case (u′ < t′) f′ g′)
+          ℜ (cond (u < t) f g) (cond (u′ < t′) f′ g′)
   lemma ℜ {t} refl {u} refl fℜf′ gℜg′ = 
-    case² ℜ (u < t) (λ t≤u → fℜf′ {t≤u} {t≤u} tt) (λ u<t → gℜg′ {u<t} {u<t} tt)
+    cond² ℜ (u < t) (λ t≤u → fℜf′ {t≤u} {t≤u} tt) (λ u<t → gℜg′ {u<t} {u<t} tt)
   
 -- Expressions
 
@@ -838,6 +838,17 @@ world {Σ} = var (wvar Σ)
 World : Time → Set
 World t = ⊤
 
+taut : ∀ {Σ α} → Typ+ Σ (rset α ⇒ set α)
+taut {Σ} {α} = abs (rset α) (Π time 
+  (app (world {time ∷ rset α ∷ Σ}) tvar₀ ⊸ app tvar₁ tvar₀))
+
+signal : ∀ {Σ α} → Typ+ Σ (rset α ⇒ rset α)
+signal {Σ} {α} = abs (rset α) (abs time (Π time ((tvar₁ ≼ tvar₀) ⊸ 
+  ((world {time ∷ time ∷ rset α ∷ Σ} ⟨ tvar₁ , tvar₀ ]) ⊸ app tvar₂ tvar₀))))
+
+▧ : ∀ {Σ α} → Typ+ Σ (rset α) → Typ+ Σ (rset α)
+▧ {Σ} = app (signal {Σ})
+
 -- Surface types
 
 data STyp : Kind → Set where
@@ -849,12 +860,12 @@ data STyp : Kind → Set where
 
 ⟪_⟫ : ∀ {K} → STyp K → Typ+ [] K
 ⟪ ⟨ T ⟩ ⟫ = app always ⟪ T ⟫
-⟪ [ T ] ⟫ = app taut ⟪ T ⟫
+⟪ [ T ] ⟫ = app (taut {[]}) ⟪ T ⟫
 ⟪ T ⊠ U ⟫ = ⟪ T ⟫ ⊗ ⟪ U ⟫
 ⟪ T ↦ U ⟫ = ⟪ T ⟫ ⊸ ⟪ U ⟫
 ⟪ T ∧ U ⟫ = ⟪ T ⟫ ⊗ʳ ⟪ U ⟫
 ⟪ T ⇒ U ⟫ = ⟪ T ⟫ ⊸ʳ ⟪ U ⟫
-⟪ □ T ⟫   = tvar₀ ⊵ ⟪ T ⟫
+⟪ □ T ⟫   = ▧ {[]} ⟪ T ⟫
 
 T⟪_⟫ : ∀ {K} → STyp K → K⟦ K ⟧
 T⟪ T ⟫ = T⟦ ⟪ T ⟫ ⟧ (World , tt)
@@ -864,21 +875,21 @@ T⟪ T ⟫ = T⟦ ⟪ T ⟫ ⟧ (World , tt)
 Signal : ∀ {α} → RSet α → RSet α
 Signal A s = ∀ t → True (s ≤ t) → A t
 
-signal : ∀ {α} (T : STyp (rset α)) s → 
+sig : ∀ {α} (T : STyp (rset α)) s → 
   T⟪ □ T ⟫ s → Signal T⟪ T ⟫ s
-signal T s σ t s≤t = σ t s≤t _
+sig T s σ t s≤t = σ t s≤t _
 
-signal⁻¹ : ∀ {α} (T : STyp (rset α)) s → 
+sig⁻¹ : ∀ {α} (T : STyp (rset α)) s → 
   Signal T⟪ T ⟫ s → T⟪ □ T ⟫ s
-signal⁻¹ T s σ t s≤t _ = σ t s≤t
+sig⁻¹ T s σ t s≤t _ = σ t s≤t
 
-signal-iso : ∀ {α} (T : STyp (rset α)) s σ → 
-  (signal T s (signal⁻¹ T s σ) ≡ σ)
-signal-iso T s σ = refl
+sig-iso : ∀ {α} (T : STyp (rset α)) s σ → 
+  (sig T s (sig⁻¹ T s σ) ≡ σ)
+sig-iso T s σ = refl
 
-signal-iso⁻¹ : ∀ {α} (T : STyp (rset α)) s σ →
-  (signal⁻¹ T s (signal T s σ) ≡ σ)
-signal-iso⁻¹ T s σ = refl
+sig-iso⁻¹ : ∀ {α} (T : STyp (rset α)) s σ →
+  (sig⁻¹ T s (sig T s σ) ≡ σ)
+sig-iso⁻¹ T s σ = refl
 
 -- Signal functions from T to U are iso to □ T ⇒ □ U
 
@@ -887,11 +898,11 @@ SF A B s = Signal A s → Signal B s
 
 sf : ∀ {α β} (T : STyp (rset α)) (U : STyp (rset β)) s →
   T⟪ □ T ⇒ □ U ⟫ s → SF T⟪ T ⟫ T⟪ U ⟫ s
-sf T U s f σ = signal U s (f (signal⁻¹ T s σ))
+sf T U s f σ = sig U s (f (sig⁻¹ T s σ))
 
 sf⁻¹ : ∀ {α β} (T : STyp (rset α)) (U : STyp (rset β)) s →
    SF T⟪ T ⟫ T⟪ U ⟫ s → T⟪ □ T ⇒ □ U ⟫ s
-sf⁻¹ T U s f σ = signal⁻¹ U s (f (signal T s σ))
+sf⁻¹ T U s f σ = sig⁻¹ U s (f (sig T s σ))
 
 sf-iso : ∀ {α β} (T : STyp (rset α)) (U : STyp (rset β)) s f → 
   (sf T U s (sf⁻¹ T U s f) ≡ f)
@@ -909,16 +920,16 @@ mutual
   ⟨ T ⟩   at s ⊨ a       ≈[ u ] b       = T ⊨ a ≈[ u ] b
   (T ∧ U) at s ⊨ (a , b) ≈[ u ] (c , d) = (T at s ⊨ a ≈[ u ] c) × (U at s ⊨ b ≈[ u ] d)
   (T ⇒ U) at s ⊨ f       ≈[ u ] g       = ∀ a b → (T at s ⊨ a ≈[ u ] b) → (U at s ⊨ f a ≈[ u ] g b)
-  □ T     at s ⊨ σ       ≈[ u ] τ       = ∀ t s≤t → True (t ≤ u) → (T at t ⊨ σ t s≤t _ ≈[ u ] τ t s≤t _)
+  □ T     at s ⊨ σ       ≈[ u ] τ       = (∀ t s≤t → True (t ≤ u) → (T at t ⊨ σ t s≤t _ ≈[ u ] τ t s≤t _))
 
   _⊨_≈[_]_ : ∀ {α} → (T : STyp (set α)) → T⟪ T ⟫ → Time → T⟪ T ⟫ → Set α
-  [ T ]   ⊨ σ       ≈[ u ] τ       = ∀ s → (T at s ⊨ σ s ≈[ u ] τ s)
+  [ T ]   ⊨ σ       ≈[ u ] τ       = ∀ s → True (s ≤ u) → (T at s ⊨ σ s _ ≈[ u ] τ s _)
   (T ⊠ U) ⊨ (a , b) ≈[ u ] (c , d) = (T ⊨ a ≈[ u ] c) × (U ⊨ b ≈[ u ] d)
   (T ↦ U) ⊨ f       ≈[ u ] g       = ∀ a b → (T ⊨ a ≈[ u ] b) → (U ⊨ f a ≈[ u ] g b)
 
-Causal : ∀ {α β} (T : STyp (rset α)) (U : STyp (rset β)) s → T⟪ T ⇒ U ⟫ s → Set (α ⊔ β)
-Causal T U s f = ∀ t σ τ → 
-  (T at s ⊨ σ ≈[ t ] τ) → (U at s ⊨ f σ ≈[ t ] f τ)
+Causal : ∀ {α β} (T : STyp (set α)) (U : STyp (set β)) → T⟪ T ↦ U ⟫ → Set (α ⊔ β)
+Causal T U f = ∀ u σ τ → 
+  (T ⊨ σ ≈[ u ] τ) → (U ⊨ f σ ≈[ u ] f τ)
 
 -- Parametricity implies causality
 
@@ -927,32 +938,35 @@ Causal T U s f = ∀ t σ τ →
 
 mutual
 
-  ℜ-impl-≈_at : ∀ {α} (T : STyp (rset α)) (s u : Time) (a b : T⟪ T ⟫ s) →
+  ℜ-impl-≈_at : ∀ {α} (T : STyp (rset α)) s u → True (s ≤ u) → ∀ a b →
     (T⟦ ⟪ T ⟫ ⟧² (ℜ[ u ] , tt) refl a b) → (T at s ⊨ a ≈[ u ] b)
-  ℜ-impl-≈ ⟨ T ⟩   at s u a b aℜb
+  ℜ-impl-≈ ⟨ T ⟩   at s u s≤u a b aℜb
     = ℜ-impl-≈ T u a b aℜb
-  ℜ-impl-≈ (T ∧ U) at s u (a , b) (c , d) (aℜc , bℜd) 
-    = (ℜ-impl-≈ T at s u a c aℜc , ℜ-impl-≈ U at s u b d bℜd)
-  ℜ-impl-≈ (T ⇒ U) at s u f g fℜg
-    = λ a b a≈b → ℜ-impl-≈ U at s u (f a) (g b) (fℜg (≈-impl-ℜ T at s u a b a≈b))
-  ℜ-impl-≈ (□ T)   at s u σ τ σℜτ
-    = λ t s≤t t≤u → ℜ-impl-≈ T at t u (σ t s≤t _) (τ t s≤t _) 
-        (σℜτ refl tt (λ {r} _ _ {r≤t} _ → ≤-trans r t u r≤t t≤u))
+  ℜ-impl-≈ (T ∧ U) at s u s≤u (a , b) (c , d) (aℜc , bℜd) 
+    = (ℜ-impl-≈ T at s u s≤u a c aℜc , ℜ-impl-≈ U at s u s≤u b d bℜd)
+  ℜ-impl-≈ (T ⇒ U) at s u s≤u f g fℜg
+    = λ a b a≈b → ℜ-impl-≈ U at s u s≤u (f a) (g b) (fℜg (≈-impl-ℜ T at s u s≤u a b a≈b))
+  ℜ-impl-≈_at (□ T) s u s≤u σ τ σℜτ = λ t s≤t t≤u → 
+    ℜ-impl-≈ T at t u t≤u (σ t s≤t _) (τ t s≤t _) 
+      (σℜτ refl tt (λ {r} _ _ {r≤t} _ → ≤-trans r t u r≤t t≤u))
 
-  ≈-impl-ℜ_at : ∀ {α} (T : STyp (rset α)) (s u : Time) (a b : T⟪ T ⟫ s) →
+  ≈-impl-ℜ_at : ∀ {α} (T : STyp (rset α)) s u → True (s ≤ u) → ∀ a b →
      (T at s ⊨ a ≈[ u ] b) → (T⟦ ⟪ T ⟫ ⟧² (ℜ[ u ] , tt) refl a b)
-  ≈-impl-ℜ ⟨ T ⟩   at s u a b a≈b
+  ≈-impl-ℜ ⟨ T ⟩   at s u s≤u a b a≈b
     = ≈-impl-ℜ T u a b a≈b
-  ≈-impl-ℜ (T ∧ U) at s u (a , b) (c , d) (a≈c , b≈d)
-    = (≈-impl-ℜ T at s u a c a≈c , ≈-impl-ℜ U at s u b d b≈d)
-  ≈-impl-ℜ (T ⇒ U) at s u f g f≈g
-    = λ {a} {b} aℜb → ≈-impl-ℜ U at s u (f a) (g b) (f≈g a b (ℜ-impl-≈ T at s u a b aℜb))
-  ≈-impl-ℜ (□ T)   at s u σ τ σ≈τ = lemma where
+  ≈-impl-ℜ (T ∧ U) at s u s≤u (a , b) (c , d) (a≈c , b≈d)
+    = (≈-impl-ℜ T at s u s≤u a c a≈c , ≈-impl-ℜ U at s u s≤u b d b≈d)
+  ≈-impl-ℜ (T ⇒ U) at s u s≤u f g f≈g
+    = λ {a} {b} aℜb → ≈-impl-ℜ U at s u s≤u (f a) (g b) (f≈g a b (ℜ-impl-≈ T at s u s≤u a b aℜb))
+  ≈-impl-ℜ (□ T)   at s u s≤u σ τ σ≈τ = lemma where
     lemma : T⟦ ⟪ □ T ⟫ ⟧² (ℜ[ u ] , tt) {s} refl σ τ
-    lemma {t} refl {s≤t} {s≤t′} tt t≤u with irrel (s ≤ t) s≤t s≤t′
-    lemma {t} refl {s≤t}        tt t≤u | refl = 
-      ≈-impl-ℜ T at t u (σ t s≤t _) (τ t s≤t _) 
-        (σ≈τ t s≤t (t≤u refl {s≤t} {s≤t} tt {≤-refl t} {≤-refl t} tt))
+    lemma {t} refl {s≤t} {s≤t′} tt kℜk′ with irrel (s ≤ t) s≤t s≤t′
+    lemma {t} refl {s≤t}        tt kℜk′ | refl
+      = ≈-impl-ℜ T at t u t≤u (σ t s≤t _) (τ t s≤t _) (σ≈τ t s≤t t≤u) where
+        t≤u : True (t ≤ u)
+        t≤u with switch (s < t)
+        t≤u | (true , s<t)  = kℜk′ {t} refl {s<t} {s<t} tt {≤-refl t} {≤-refl t} tt 
+        t≤u | (false , t≤s) = ≤-trans t s u t≤s s≤u
 
   ℜ-impl-≈ : ∀ {α} (T : STyp (set α)) (u : Time) (a b : T⟪ T ⟫) →
     (T⟦ ⟪ T ⟫ ⟧² (ℜ[ u ] , tt) a b) → (T ⊨ a ≈[ u ] b)
@@ -961,7 +975,7 @@ mutual
   ℜ-impl-≈ (T ↦ U) u f g fℜg
     = λ a b a≈b → ℜ-impl-≈ U u (f a) (g b) (fℜg (≈-impl-ℜ T u a b a≈b))
   ℜ-impl-≈ [ T ] u σ τ σℜτ
-    = λ s → ℜ-impl-≈ T at s u (σ s) (τ s) (σℜτ refl)
+    = λ s s≤u → ℜ-impl-≈ T at s u s≤u (σ s _) (τ s _) (σℜτ refl s≤u)
 
   ≈-impl-ℜ : ∀ {α} (T : STyp (set α)) (u : Time) (a b : T⟪ T ⟫) →
     (T ⊨ a ≈[ u ] b) → (T⟦ ⟪ T ⟫ ⟧² (ℜ[ u ] , tt) a b)
@@ -971,15 +985,14 @@ mutual
     = λ {a} {b} aℜb → ≈-impl-ℜ U u (f a) (g b) (f≈g a b (ℜ-impl-≈ T u a b aℜb))
   ≈-impl-ℜ [ T ] u σ τ σ≈τ = lemma where
     lemma : T⟦ ⟪ [ T ] ⟫ ⟧² (ℜ[ u ] , tt) σ τ
-    lemma {s} refl = ≈-impl-ℜ T at s u (σ s) (τ s) (σ≈τ s)
+    lemma {s} refl s≤u = ≈-impl-ℜ T at s u s≤u (σ s _) (τ s _) (σ≈τ s s≤u)
 
 -- Every F-omega function is causal
 
-causality : ∀ {α β} (T : STyp (rset α)) (U : STyp (rset β)) (M : Exp [] ⟪ [ T ⇒ U ] ⟫) s → 
-  Causal T U s (M⟦ M ⟧ (World , tt) tt s)
-causality T U M s t 
-  = ℜ-impl-≈ T ⇒ U at s t 
-      (M⟦ M ⟧ (World , tt) tt s) 
-      (M⟦ M ⟧ (World , tt) tt s) 
-      (M⟦ M ⟧² (ℜ[ t ] , _) tt refl)
-
+causality : ∀ {α β} (T : STyp (set α)) (U : STyp (set β)) (M : Exp [] ⟪ T ↦ U ⟫) → 
+  Causal T U (M⟦ M ⟧ (World , tt) tt)
+causality T U M u
+  = ℜ-impl-≈ (T ↦ U) u
+      (M⟦ M ⟧ (World , tt) tt) 
+      (M⟦ M ⟧ (World , tt) tt) 
+      (M⟦ M ⟧² (ℜ[ u ] , _) tt)
