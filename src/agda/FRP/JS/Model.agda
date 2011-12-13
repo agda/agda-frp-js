@@ -47,9 +47,15 @@ irrel false () ()
 
 -- Postulates (including dependent extensionality)
 
+data _≤?_ (t u : Time) : Set where
+  leq : True (t ≤ u) → (t ≤? u)
+  geq : True (u ≤ t) → (t ≤? u)
+
 postulate
   ≤-refl : ∀ t → True (t ≤ t)
   ≤-trans : ∀ t u v → True (t ≤ u) → True (u ≤ v) → True (t ≤ v)
+  ≤-asym : ∀ t u → True (t ≤ u) → True (u ≤ t) → (t ≡ u)
+  ≤-total : ∀ t u → (t ≤? u) 
   dext : ∀ {α β} {A : Set α} {B : A → Set β} {F G : ∀ a → B a} → (∀ a → F a ≡ G a) → (F ≡ G)
 
 ext : ∀ {α β} {A : Set α} {B : Set β} {F G : A → B} →
@@ -247,21 +253,19 @@ data TVar (K : Kind) : Kinds → Set where
 
 data TConst : Kind → Set where
   prod fun : ∀ {α β} → TConst (set α ⇒ (set β ⇒ set (α ⊔ β)))
-  leq lt : TConst (time ⇒ (time ⇒ set o))
+  leq : TConst (time ⇒ (time ⇒ set o))
   univ : ∀ K {α} → TConst ((K ⇒ set α) ⇒ set (level K ⊔ α))
 
 C⟦_⟧ : ∀ {K} → (TConst K) → K⟦ K ⟧
 C⟦ prod ⟧   = λ A B → (A × B)
 C⟦ fun ⟧    = λ A B → (A → B)
 C⟦ leq ⟧    = λ t u → True (t ≤ u)
-C⟦ lt ⟧     = λ t u → True (t < u)
 C⟦ univ K ⟧ = λ F → ∀ A → F A
 
 C⟦_⟧² : ∀ {K} (C : TConst K) → (K ∋ C⟦ C ⟧ ↔ C⟦ C ⟧)
 C⟦ prod ⟧²   = λ ℜ ℑ → (ℜ ×² ℑ)
 C⟦ fun ⟧²    = λ ℜ ℑ → (ℜ →² ℑ)
 C⟦ leq ⟧²    = λ _ _ _ _ → ⊤
-C⟦ lt ⟧²     = λ _ _ _ _ → ⊤
 C⟦ univ K ⟧² = λ ℜ f g → ∀ {a b} ℑ → ℜ ℑ (f a) (g b)
 
 -- Types
@@ -307,9 +311,6 @@ _⊸_ = capp₂ fun
 _≼_ : ∀ {Σ} → Typ Σ time → Typ Σ time → Typ Σ (set o)
 _≼_ = capp₂ leq
 
-_≺_ : ∀ {Σ} → Typ Σ time → Typ Σ time → Typ Σ (set o)
-_≺_ = capp₂ lt
-
 Π : ∀ {Σ α} K → Typ (K ∷ Σ) (set α) → Typ Σ (set (level K ⊔ α))
 Π K T = capp (univ K) (abs K T)
 
@@ -346,12 +347,19 @@ _⊸ʳ_ = app₂ funʳ
 always : ∀ {Σ α} → Typ Σ (set α ⇒ rset α)
 always {Σ} {α} = abs (set α) (abs time tvar₁)
 
-½interval : ∀ {Σ α} → Typ Σ (rset α ⇒ (time ⇒ (time ⇒ set α)))
-½interval {Σ} {α} = abs (rset α) (abs time (abs time (Π time 
-  ((tvar₂ ≺ tvar₀) ⊸ ((tvar₀ ≼ tvar₁) ⊸ app tvar₃ tvar₀)))))
+interval : ∀ {Σ α} → Typ Σ (rset α ⇒ (time ⇒ (time ⇒ set α)))
+interval {Σ} {α} = abs (rset α) (abs time (abs time (Π time 
+  ((tvar₂ ≼ tvar₀) ⊸ ((tvar₀ ≼ tvar₁) ⊸ app tvar₃ tvar₀)))))
 
-_⟨_,_] : ∀ {Σ α} → Typ Σ (rset α) → Typ Σ time → Typ Σ time → Typ Σ (set α)
-T ⟨ t , u ] = app (app (app ½interval T) t) u
+_[_,_] : ∀ {Σ α} → Typ Σ (rset α) → Typ Σ time → Typ Σ time → Typ Σ (set α)
+T [ t , u ] = app (app (app interval T) t) u
+
+constreq : ∀ {Σ α β} → Typ Σ (rset α ⇒ (rset β ⇒ rset (α ⊔ β)))
+constreq {Σ} {α} {β} = abs (rset α) (abs (rset β) (abs time (Π time 
+  ((tvar₁ ≼ tvar₀) ⊸ ((tvar₃ [ tvar₁ , tvar₀ ]) ⊸ app tvar₂ tvar₀)))))
+
+_⊵_ : ∀ {Σ α β} → Typ Σ (rset α) → Typ Σ (rset β) → Typ Σ (rset (α ⊔ β))
+T ⊵ U = app₂ constreq T U
 
 -- Contexts
 
@@ -729,51 +737,61 @@ data Const {Σ : Kinds} : ∀ {α} → Typ Σ (set α) → Set where
   snd : ∀ {α β} → Const (Π (set α) (Π (set β) ((tvar₁ ⊗ tvar₀) ⊸ tvar₀)))
   ≼-refl : Const (Π time (tvar₀ ≼ tvar₀))
   ≼-trans : Const (Π time (Π time (Π time ((tvar₂ ≼ tvar₁) ⊸ ((tvar₁ ≼ tvar₀) ⊸ (tvar₂ ≼ tvar₀))))))
-  ≼-absurd : ∀ {α} → Const (Π (set α) (Π time (Π time ((tvar₁ ≺ tvar₀) ⊸ ((tvar₀ ≼ tvar₁) ⊸ tvar₂)))))
-  ≼-case : ∀ {α} → Const (Π (set α) (Π time (Π time (((tvar₁ ≼ tvar₀) ⊸ tvar₂) ⊸ (((tvar₀ ≺ tvar₁) ⊸ tvar₂) ⊸ tvar₂)))))
+  ≼-antisym : ∀ {α} → Const (Π (rset α) (Π time (Π time ((tvar₁ ≼ tvar₀) ⊸ ((tvar₀ ≼ tvar₁) ⊸ (app tvar₂ tvar₁ ⊸ app tvar₂ tvar₀))))))
+  ≼-case : ∀ {α} → Const (Π (set α) (Π time (Π time (((tvar₁ ≼ tvar₀) ⊸ tvar₂) ⊸ (((tvar₀ ≼ tvar₁) ⊸ tvar₂) ⊸ tvar₂)))))
 
-absurd : ∀ {α} {A : Set α} b → True b → True (not b) → A
-absurd true  tt ()
-absurd false () tt
+≤-antisym : ∀ {α} (A : RSet α) t u → True (t ≤ u) → True (u ≤ t) → A t → A u
+≤-antisym A t u t≤u u≤t a with ≤-asym t u t≤u u≤t
+≤-antisym A t .t _   _  a | refl = a
 
-cond : ∀ {α} {A : Set α} b → (True (not b) → A) → (True b → A) → A
-cond true  f g = g tt
-cond false f g = f tt
+≤-case′ : ∀ {α} {A : Set α} {t u} → (t ≤? u) → (True (t ≤ u) → A) → (True (u ≤ t) → A) → A
+≤-case′ (leq t≤u) f g = f t≤u
+≤-case′ (geq u≤t) f g = g u≤t
+
+≤-case : ∀ {α} (A : Set α) t u → (True (t ≤ u) → A) → (True (u ≤ t) → A) → A
+≤-case A t u = ≤-case′ (≤-total t u)
 
 c⟦_⟧ : ∀ {Σ} {α} {T : Typ Σ (set α)} → 
   Const T → (As : Σ⟦ Σ ⟧) → (T⟦ T ⟧ As)
-c⟦ pair ⟧     As = λ A B a b → (a , b)
-c⟦ fst ⟧      As = λ A B → proj₁
-c⟦ snd ⟧      As = λ A B → proj₂
-c⟦ ≼-refl ⟧   As = ≤-refl
-c⟦ ≼-trans ⟧  As = ≤-trans
-c⟦ ≼-absurd ⟧ As = λ A t u → absurd (t < u)
-c⟦ ≼-case ⟧   As = λ A t u → cond (u < t)
-
-cond² : ∀ {α} {A A′ : Set α} (ℜ : A → A′ → Set α) b →
-  ∀ {f f′} → (∀ b× → ℜ (f b×) (f′ b×)) →
-    ∀ {g g′} → (∀ b✓ → ℜ (g b✓) (g′ b✓)) →
-      ℜ (cond b f g) (cond b f′ g′)
-cond² ℜ true  fℜf′ gℜg′ = gℜg′ tt
-cond² ℜ false fℜf′ gℜg′ = fℜf′ tt
+c⟦ pair ⟧      As = λ A B a b → (a , b)
+c⟦ fst ⟧       As = λ A B → proj₁
+c⟦ snd ⟧       As = λ A B → proj₂
+c⟦ ≼-refl ⟧    As = ≤-refl
+c⟦ ≼-trans ⟧   As = ≤-trans
+c⟦ ≼-antisym ⟧ As = ≤-antisym
+c⟦ ≼-case ⟧    As = ≤-case
 
 c⟦_⟧² : ∀ {Σ} {α} {T : Typ Σ (set α)} (c : Const T) → 
   ∀ {As Bs} (ℜs : Σ ∋ As ↔* Bs) → 
     (T⟦ T ⟧² ℜs (c⟦ c ⟧ As) (c⟦ c ⟧ Bs))
-c⟦ pair ⟧²       ℜs = λ ℜ ℑ aℜb cℑd → (aℜb , cℑd)
-c⟦ fst ⟧²        ℜs = λ ℜ ℑ → proj₁
-c⟦ snd ⟧²        ℜs = λ ℜ ℑ → proj₂
-c⟦ ≼-refl ⟧²     ℜs = _
-c⟦ ≼-trans ⟧²    ℜs = _
-c⟦ ≼-absurd ⟧²   ℜs = λ ℜ {t} t≡t {u} u≡u {t<u} tt {u≤t} tt → absurd (t < u) t<u u≤t
-c⟦ ≼-case {α} ⟧² ℜs = lemma where
-  lemma : ∀ {A A′ : Set α} (ℜ : A → A′ → Set α) →
-    ∀ {t t′} → (t ≡ t′) → ∀ {u u′} → (u ≡ u′) →
-      ∀ {f f′} → (∀ {t≤u t′≤u′} → ⊤ → ℜ (f t≤u) (f′ t′≤u′)) →
-        ∀ {g g′} → (∀ {u<t u′<t′} → ⊤ → ℜ (g u<t) (g′ u′<t′)) →
-          ℜ (cond (u < t) f g) (cond (u′ < t′) f′ g′)
-  lemma ℜ {t} refl {u} refl fℜf′ gℜg′ = 
-    cond² ℜ (u < t) (λ t≤u → fℜf′ {t≤u} {t≤u} tt) (λ u<t → gℜg′ {u<t} {u<t} tt)
+c⟦ pair ⟧²          ℜs = λ ℜ ℑ aℜb cℑd → (aℜb , cℑd)
+c⟦ fst ⟧²           ℜs = λ ℜ ℑ → proj₁
+c⟦ snd ⟧²           ℜs = λ ℜ ℑ → proj₂
+c⟦ ≼-refl ⟧²        ℜs = _
+c⟦ ≼-trans ⟧²       ℜs = _
+c⟦ ≼-antisym {α} ⟧² ℜs = lemma where
+  lemma : ∀ {α} {A B : RSet α} (ℜ : rset α ∋ A ↔ B) → 
+    {t u : Time} → (t≡u : t ≡ u) → {v w : Time} → (v≡w : v ≡ w) →
+    {t≤v : True (t ≤ v)} {u≤w : True (u ≤ w)} → ⊤ →
+    {v≤t : True (v ≤ t)} {w≤u : True (w ≤ u)} → ⊤ →
+    {a : A t} {b : B u} → ℜ t≡u a b →
+    ℜ v≡w (≤-antisym A t v t≤v v≤t a) (≤-antisym B u w u≤w w≤u b)
+  lemma ℜ {t} refl {v} refl {t≤v} {u≤w} tt {v≤t} {w≤u} tt aℜb 
+    with irrel (t ≤ v) t≤v u≤w | irrel (v ≤ t) v≤t w≤u
+  lemma ℜ {t} refl {v} refl {t≤v} tt {v≤t} tt aℜb
+    | refl | refl with ≤-asym t v t≤v v≤t
+  lemma ℜ refl refl tt tt aℜb
+    | refl | refl | refl = aℜb
+c⟦ ≼-case {α} ⟧²    ℜs = lemma where
+  lemma : ∀ {α} {A B : Set α} (ℜ : set α ∋ A ↔ B) →
+    ∀ {t u : Time} → (t≡u : t ≡ u) → ∀ {v w : Time} → (v≡w : v ≡ w) → 
+    ∀ {f g} → (∀ {t≤v} {u≤w} → ⊤ → ℜ (f t≤v) (g u≤w)) →
+    ∀ {h i} → (∀ {v≤t} {w≤u} → ⊤ → ℜ (h v≤t) (i w≤u)) →
+    ℜ (≤-case A t v f h) (≤-case B u w g i)
+  lemma ℜ {t} refl {v} refl {f} {g} fℜg {h} {i} hℜi = lemma′ (≤-total t v) where
+    lemma′ : ∀ t≤?v → ℜ (≤-case′ t≤?v f h) (≤-case′ t≤?v g i)
+    lemma′ (leq t≤v) = fℜg {t≤v} {t≤v} tt
+    lemma′ (geq v≤t) = hℜi {v≤t} {v≤t} tt
   
 -- Expressions
 
@@ -842,13 +860,6 @@ taut : ∀ {Σ α} → Typ+ Σ (rset α ⇒ set α)
 taut {Σ} {α} = abs (rset α) (Π time 
   (app (world {time ∷ rset α ∷ Σ}) tvar₀ ⊸ app tvar₁ tvar₀))
 
-signal : ∀ {Σ α} → Typ+ Σ (rset α ⇒ rset α)
-signal {Σ} {α} = abs (rset α) (abs time (Π time ((tvar₁ ≼ tvar₀) ⊸ 
-  ((world {time ∷ time ∷ rset α ∷ Σ} ⟨ tvar₁ , tvar₀ ]) ⊸ app tvar₂ tvar₀))))
-
-▧ : ∀ {Σ α} → Typ+ Σ (rset α) → Typ+ Σ (rset α)
-▧ {Σ} = app (signal {Σ})
-
 -- Surface types
 
 data STyp : Kind → Set where
@@ -865,7 +876,7 @@ data STyp : Kind → Set where
 ⟪ T ↦ U ⟫ = ⟪ T ⟫ ⊸ ⟪ U ⟫
 ⟪ T ∧ U ⟫ = ⟪ T ⟫ ⊗ʳ ⟪ U ⟫
 ⟪ T ⇒ U ⟫ = ⟪ T ⟫ ⊸ʳ ⟪ U ⟫
-⟪ □ T ⟫   = ▧ {[]} ⟪ T ⟫
+⟪ □ T ⟫   = tvar₀ ⊵ ⟪ T ⟫
 
 T⟪_⟫ : ∀ {K} → STyp K → K⟦ K ⟧
 T⟪ T ⟫ = T⟦ ⟪ T ⟫ ⟧ (World , tt)
@@ -963,10 +974,7 @@ mutual
     lemma {t} refl {s≤t} {s≤t′} tt kℜk′ with irrel (s ≤ t) s≤t s≤t′
     lemma {t} refl {s≤t}        tt kℜk′ | refl
       = ≈-impl-ℜ T at t u t≤u (σ t s≤t _) (τ t s≤t _) (σ≈τ t s≤t t≤u) where
-        t≤u : True (t ≤ u)
-        t≤u with switch (s < t)
-        t≤u | (true , s<t)  = kℜk′ {t} refl {s<t} {s<t} tt {≤-refl t} {≤-refl t} tt 
-        t≤u | (false , t≤s) = ≤-trans t s u t≤s s≤u
+        t≤u = kℜk′ {t} refl {s≤t} {s≤t} tt {≤-refl t} {≤-refl t} tt
 
   ℜ-impl-≈ : ∀ {α} (T : STyp (set α)) (u : Time) (a b : T⟪ T ⟫) →
     (T⟦ ⟪ T ⟫ ⟧² (ℜ[ u ] , tt) a b) → (T ⊨ a ≈[ u ] b)
