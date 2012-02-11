@@ -1,11 +1,13 @@
+open import FRP.JS.Bool using ( Bool )
 open import FRP.JS.RSet using ( RSet ; ⟦_⟧ ; ⟨_⟩ ; _⇒_ )
-open import FRP.JS.Behaviour using ( Beh )
+open import FRP.JS.Behaviour using ( Beh ; map2 )
 open import FRP.JS.Event using ( Evt ; ∅ ; _∪_ ; map )
 open import FRP.JS.Product using ( _∧_ ; _,_ )
 open import FRP.JS.String using ( String )
 
 module FRP.JS.DOM where
 
+infixr 2 _≟*_
 infixr 4 _++_ _+++_
 
 postulate
@@ -19,10 +21,12 @@ postulate
 
 postulate
   DOW : Set
+  unattached : DOW
   left right : DOW → DOW
   child : String → DOW → DOW
   events : ∀ {A} → EventType A → DOW → ⟦ Evt A ⟧
 
+{-# COMPILED_JS unattached require("agda.frp").unattached() #-}
 {-# COMPILED_JS left function(w) { return w.left(); } #-}
 {-# COMPILED_JS right function(w) { return w.right(); } #-}
 {-# COMPILED_JS child function(a) { return function(w) { return w.child(a); }; } #-}
@@ -46,6 +50,15 @@ listen : ∀ {A w} → EventType A → ⟦ Beh (DOM w) ⇒ Evt A ⟧
 listen {A} {w} t b = events t w
 
 {-# COMPILED_JS listen function(A) { return function(w) { return function(t) { return function(s) { return function(b) { return w.events(t); }; }; }; }; } #-}
+
+private
+  postulate
+    _≟_ : ∀ {w} → ⟦ DOM w ⇒ DOM w ⇒ ⟨ Bool ⟩ ⟧
+
+  {-# COMPILED_JS _≟_ function(w) { return function(s) { return function(a) { return function(b) { return a.equals(b); }; }; }; } #-}
+
+_≟*_ : ∀ {w} → ⟦ Beh (DOM w) ⇒ Beh (DOM w) ⇒ Beh ⟨ Bool ⟩ ⟧
+_≟*_  = map2 _≟_
 
 [+] : ∀ {A w} → ⟦ Beh (DOM w) ∧ Evt A ⟧
 [+] = ([] , ∅)

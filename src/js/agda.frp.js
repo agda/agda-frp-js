@@ -7,6 +7,7 @@ define(["agda.frp.signal","agda.frp.time"],function(signal,time) { return {
     empty: signal.empty,
     geolocation: signal.geolocation,
     reactimate: signal.reactimate,
+    unattached: signal.unattached,
     // Re-export agda.frp.time
     seconds: time.seconds,
     minutes: time.minutes,
