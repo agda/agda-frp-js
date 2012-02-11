@@ -328,6 +328,10 @@ define(["agda.frp.taskqueue","agda.mixin"],function(taskqueue,mixin) {
     // Behaviours are contiguous signals, which cache their most recent result
     function Behaviour() {}
     mixin.singleton.mixin(Behaviour.prototype);
+    Behaviour.prototype.anchor = function(notifier) {
+	// We add a dummy upstream neighbour to stop us from being disposed of
+	this.addUpstream({ uid: -1, rank: this.rank, notify: notifier });
+    }
     Behaviour.prototype.addUpstream = function(signal) {
 	Signal.prototype.addUpstream.call(this,signal);
 	signal.notify(this.start,this.value);
@@ -340,6 +344,9 @@ define(["agda.frp.taskqueue","agda.mixin"],function(taskqueue,mixin) {
     }
     Behaviour.prototype.map = function(fun) {
 	return new MapBehaviour(fun,this);
+    }
+    Behaviour.prototype.map2 = function(b,fun) {
+	return new Map2Behaviour(fun,this,b);
     }
     Behaviour.prototype.text = function() {
 	return new TextBehaviour(this);
@@ -380,6 +387,15 @@ define(["agda.frp.taskqueue","agda.mixin"],function(taskqueue,mixin) {
     Behaviour1.prototype.mixin(MapBehaviour.prototype);
     MapBehaviour.prototype.notify = function(now,value) {
 	this.notifyUpstream(now,this.fun(now,value));
+    }
+    // Map2 a function onto two behaviours
+    function Map2Behaviour(fun,downstream1,downstream2) {
+	this.fun = fun;
+	Behaviour2.call(this,downstream1,downstream2);
+    }
+    Behaviour2.prototype.mixin(Map2Behaviour.prototype);
+    Map2Behaviour.prototype.notify = function(now,value) {
+	this.notifyUpstream(now,this.fun(now,this.downstream1.value,this.downstream2.value));
     }
     // Convert an event into a behaviour
     function HoldBehaviour(init,downstream) {
@@ -423,6 +439,20 @@ define(["agda.frp.taskqueue","agda.mixin"],function(taskqueue,mixin) {
 	this.value = this;
     }
     mixin.singleton.mixin(DOMNodesBehaviour.prototype);
+    DOMNodesBehaviour.prototype.equals = function(other) {
+        return this.html() === other.value.html();
+    }
+    DOMNodesBehaviour.prototype.html = function() {
+        var container = document.createElement("div");
+	var node = document.createElement("div");
+        container.appendChild(node);
+        this.appendChildrenOf(node);
+        return container.innerHTML;
+    }
+    DOMNodesBehaviour.prototype.initializeChildrenOf = function(node) {
+       	while (node.firstChild) { node.removeChild(node.firstChild); }
+	this.appendChildrenOf(node);
+    }
     DOMNodesBehaviour.prototype.setChildrenOf = function(node) {
 	this.replaceChildrenOf(node,0);
 	while (node.childNodes.length > this.length) {
@@ -449,10 +479,8 @@ define(["agda.frp.taskqueue","agda.mixin"],function(taskqueue,mixin) {
 	}
     }
     DOMNodesBehaviour.prototype.attachTo = function(node) {
-	// We add a dummy upstream neighbour to stop us from being disposed of
-	this.addUpstream({ uid: -1, rank: this.rank, notify: function(){} });
-	while (node.firstChild) { node.removeChild(node.firstChild); }
-	this.appendChildrenOf(node);
+	this.anchor(function(){});
+	this.initializeChildrenOf(node);
     }
     DOMNodesBehaviour.prototype.addEventListener = function(type,listener) {}
     DOMNodesBehaviour.prototype.removeEventListener = function(type,listener) {}
@@ -514,7 +542,7 @@ define(["agda.frp.taskqueue","agda.mixin"],function(taskqueue,mixin) {
 	for (var i = 0; i < this.pool.length; i++) {
 	    var owner = this.pool[i].ownerElment;
 	    if ((!owner) || (owner === node )) {
-		node.setAttributeNode(this.pool[i]);
+		node.setAttributeNode(this.pool[i].cloneNode(true));
 		return;
 	    }
 	}
@@ -749,6 +777,7 @@ define(["agda.frp.taskqueue","agda.mixin"],function(taskqueue,mixin) {
 	constant: function(value) { return new ConstantBehaviour(value); },
         empty: function() { return new EmptyBehaviour(); },
 	geolocation: function() { return geolocation; },
+        unattached: function() { return new DOW(); },
 	reactimate: function(f) { return f(new DOW())(taskqueue.singleton.time); }
     };
 });
