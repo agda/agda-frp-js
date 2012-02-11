@@ -23,6 +23,9 @@ tests =
   , test "map"
     ( ok◇ "map suc [ 0 ] ≟* [ 1 ]" (map suc [ 0 ] ≟* [ 1 ])
     , ok◇ "map suc [ 1 ] ≟* [ 1 ]" (not* (map suc [ 1 ] ≟* [ 1 ])) )
+  , test "join"
+    ( ok◇ "join (map [ suc ] [ 0 ] ) ≟* [ 1 ]" (join (map (λ n → [ suc n ]) [ 0 ]) ≟* [ 1 ])
+    , ok◇ "join (map [ suc ] [ 1 ]) ≟* [ 1 ]" (not* (join (map (λ n → [ suc n ]) [ 1 ]) ≟* [ 1 ])) )
   , test "hold"
     ( ok◇ "hold 1 ∅ ≟* [ 1 ]" (hold 1 ∅ ≟* [ 1 ])
     , ok◇ "hold 0 ∅ ≟* [ 1 ]" (not* (hold 0 ∅ ≟* [ 1 ])) ) )

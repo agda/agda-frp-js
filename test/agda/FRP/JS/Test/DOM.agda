@@ -56,5 +56,18 @@ tests =
       (withDOW λ w → element "p" {w} (text [ "abc" ]) ≟* element "p" (text [ "abc" ]))
     , ok◇ "element p (text [ a ]) ++ element p (text [ b ]) ≟* element p (text [ a ])"
       (withDOW λ w → not* (element "p" {left w} (text [ "a" ]) ++ element "p" (text [ "b" ]) ≟* element "p" (text [ "a" ])))
-      ) )
+      )
+  , test "join"
+    ( ok◇ "text (join (map [ x ] [ abc ])) ≟* text [ abc ]"
+      (withDOW λ w → text {w} (join (map (λ s → [ s ]) [ "abc" ])) ≟* text [ "abc" ])
+    , ok◇ "join (map (text [ x ]) [ abc ]) ≟* text [ abc ]"
+      (withDOW λ w → join (map (λ s → text {w} [ s ]) [ "abc" ]) ≟* text [ "abc" ])
+   , ok◇ "element p (join (map (attr foo [ x ]) [ alpha ]) ++ join (map (attr bar [ x ]) [ alpha ])) ≟* element p (attr foo [ alpha ] ++ attr bar [ alpha ])"
+      (withDOW λ w → element "p" {w} (join (map (λ s → attr "foo" [ s ]) [ "alpha" ]) ++ join (map (λ s → attr "bar" [ s ]) [ "alpha" ])) ≟* element "p" (attr "foo" [ "alpha" ] ++ attr "bar" [ "alpha" ]))
+   , ok◇ "element p (join (map (attr foo [ x ]) [ beta ]) ++ join (map (attr bar [ x ]) [ alpha ])) ≟* element p (attr foo [ alpha ] ++ attr bar [ alpha ])"
+      (withDOW λ w → not* (element "p" {w} (join (map (λ s → attr "foo" [ s ]) [ "beta" ]) ++ join (map (λ s → attr "bar" [ s ]) [ "alpha" ])) ≟* element "p" (attr "foo" [ "alpha" ] ++ attr "bar" [ "alpha" ])))
+    , ok◇ "text (join (map [ x ] [ a ])) ≟* text [ abc ]"
+      (withDOW λ w → not* (text {w} (join (map (λ s → [ s ]) [ "a" ])) ≟* text [ "abc" ]))
+    , ok◇ "join (map (text [ x ]) [ a ]) ≟* text [ abc ]"
+      (withDOW λ w → not* (join (map (λ s → text {w} [ s ]) [ "a" ]) ≟* text [ "abc" ])) ) )
 
