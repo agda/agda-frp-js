@@ -2,7 +2,7 @@ An implementation of Functional Reactive Programming for building HTML
 applications in Agda.
 
 To build and application, start with an HTML file:
-
+```html
   <html>
     <head>
       <title>Hello World</title>
@@ -13,18 +13,18 @@ To build and application, start with an HTML file:
       <p class="agda" data-agda="Demo.Hello"></p>
     </body>
   </html>
-
+```
 This is just a regular old HTML file, which loads the agda.frp.main
 JavaScript module (using require.js, but any AMD-compliant JavaScript
 module loader should work). The important part is:
-
+```html
   <p class="agda" data-agda="Demo.Hello"></p>
-
+```
 The "agda" class and data-agda attribute indicates that an Agda program
 should be executed inside the annotated node.
 
 Now write an Agda program:
-
+```agda
   open import FRP.JS.Behaviour using ( Beh ; [_] )
   open import FRP.JS.DOM using ( DOM ; text )
   open import FRP.JS.RSet using ( ⟦_⟧ )
@@ -33,13 +33,13 @@ Now write an Agda program:
  
   main : ∀ {w} → ⟦ Beh (DOM w) ⟧
   main = text ["Hello, world."]
-
+```
 This program creates a text node whose content is always "Hello, World."
 
 Compile (using the darcs snapshot of Agda 2.2.11):
-
+```sh
   agda --js Demo/Hello.agda
-
+```
 this will create a bunch of js files such as jAgda.Demo.Hello.js.
 
 Put all the .js files (including require.js and the agda.frp.*.js
